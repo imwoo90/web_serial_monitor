@@ -1,7 +1,11 @@
+use super::serial_monitor::{AppState, LineEnding};
 use dioxus::prelude::*;
 
 #[component]
 pub fn Footer() -> Element {
+    let mut state = use_context::<AppState>();
+    let current_ending = (state.line_ending)();
+
     rsx! {
         footer { class: "shrink-0 p-5 pt-3 bg-background-dark border-t border-[#2a2e33] z-20 relative",
             div { class: "absolute top-0 left-0 right-0 h-px bg-linear-to-r from-transparent via-primary/20 to-transparent" }
@@ -11,17 +15,18 @@ pub fn Footer() -> Element {
                         "Payload"
                     }
                     div { class: "flex bg-[#0d0f10] p-0.5 rounded-lg border border-[#2a2e33]",
-                        button { class: "px-2 py-1 rounded text-[10px] font-bold text-gray-500 hover:text-white transition-colors",
-                            "NONE"
-                        }
-                        button { class: "px-2 py-1 rounded text-[10px] font-bold text-gray-500 hover:text-white transition-colors",
-                            "NL"
-                        }
-                        button { class: "px-2 py-1 rounded text-[10px] font-bold text-gray-500 hover:text-white transition-colors",
-                            "CR"
-                        }
-                        button { class: "px-2 py-1 rounded bg-primary/20 text-primary border border-primary/20 shadow-sm text-[10px] font-bold transition-colors",
-                            "NL+CR"
+                        for ending in [LineEnding::None, LineEnding::NL, LineEnding::CR, LineEnding::NLCR] {
+                            button {
+                                class: "px-2 py-1 rounded text-[10px] font-bold transition-all duration-200",
+                                class: if current_ending == ending { "bg-primary/20 text-primary border border-primary/20 shadow-sm" } else { "text-gray-500 hover:text-white" },
+                                onclick: move |_| state.line_ending.set(ending),
+                                match ending {
+                                    LineEnding::None => "NONE",
+                                    LineEnding::NL => "NL",
+                                    LineEnding::CR => "CR",
+                                    LineEnding::NLCR => "NL+CR",
+                                }
+                            }
                         }
                     }
                 }

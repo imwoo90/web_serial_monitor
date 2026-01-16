@@ -6,12 +6,21 @@ use super::footer::Footer;
 use super::header::Header;
 use super::settings_panel::SettingsPanel;
 
+#[derive(Clone, Copy, PartialEq)]
+pub enum LineEnding {
+    None,
+    NL,
+    CR,
+    NLCR,
+}
+
 #[derive(Clone, Copy)]
 pub struct AppState {
     pub show_settings: Signal<bool>,
     pub show_highlights: Signal<bool>,
     pub show_timestamps: Signal<bool>,
     pub autoscroll: Signal<bool>,
+    pub line_ending: Signal<LineEnding>,
 }
 
 #[component]
@@ -21,12 +30,14 @@ pub fn SerialMonitor() -> Element {
     let show_highlights = use_signal(|| false);
     let show_timestamps = use_signal(|| true);
     let autoscroll = use_signal(|| true);
+    let line_ending = use_signal(|| LineEnding::None);
 
     use_context_provider(|| AppState {
         show_settings,
         show_highlights,
         show_timestamps,
         autoscroll,
+        line_ending,
     });
 
     rsx! {
