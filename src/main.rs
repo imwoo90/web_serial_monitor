@@ -1,6 +1,7 @@
 use dioxus::prelude::*;
 
 mod components;
+mod state;
 use components::serial_monitor::SerialMonitor;
 
 const FAVICON: Asset = asset!("/assets/favicon.ico");

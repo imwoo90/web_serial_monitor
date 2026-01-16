@@ -1,10 +1,5 @@
-use super::serial_monitor::{AppState, Highlight};
+use crate::state::{AppState, Highlight, HIGHLIGHT_COLORS};
 use dioxus::prelude::*;
-
-pub const HIGHLIGHT_COLORS: &[&str] = &[
-    "red", "blue", "yellow", "green", "purple", "orange", "teal", "pink", "indigo", "lime", "cyan",
-    "rose", "fuchsia", "amber", "emerald", "sky", "violet",
-];
 
 #[component]
 pub fn FilterSection() -> Element {

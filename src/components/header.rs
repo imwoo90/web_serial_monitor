@@ -1,4 +1,4 @@
-use super::serial_monitor::AppState;
+use crate::state::AppState;
 use dioxus::prelude::*;
 
 #[component]
