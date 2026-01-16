@@ -6,20 +6,36 @@ use super::footer::Footer;
 use super::header::Header;
 use super::settings_panel::SettingsPanel;
 
+#[derive(Clone, Copy)]
+pub struct AppState {
+    pub show_settings: Signal<bool>,
+    pub show_highlights: Signal<bool>,
+    pub show_timestamps: Signal<bool>,
+    pub autoscroll: Signal<bool>,
+}
+
 #[component]
 pub fn SerialMonitor() -> Element {
-    rsx! {
-        div {
-            class: "bg-background-light dark:bg-background-dark h-screen w-full flex flex-col font-display text-white overflow-hidden selection:bg-primary/30 selection:text-primary",
+    // Initialize common state
+    let show_settings = use_signal(|| false);
+    let show_highlights = use_signal(|| false);
+    let show_timestamps = use_signal(|| true);
+    let autoscroll = use_signal(|| true);
 
-            input { checked: true, class: "peer/timestamp hidden", id: "timestamp-toggle", "type": "checkbox" }
-            input { checked: true, class: "peer/autoscroll hidden", id: "autoscroll-toggle", "type": "checkbox" }
+    use_context_provider(|| AppState {
+        show_settings,
+        show_highlights,
+        show_timestamps,
+        autoscroll,
+    });
+
+    rsx! {
+        div { class: "bg-background-light dark:bg-background-dark h-screen w-full flex flex-col font-display text-white overflow-hidden selection:bg-primary/30 selection:text-primary",
+
             div { class: "relative shrink-0 z-30",
-                input { class: "peer/settings hidden", id: "settings-panel-toggle", "type": "checkbox" }
                 Header {}
                 SettingsPanel {}
             }
-            input { class: "peer/highlight hidden", id: "highlight-panel-toggle", "type": "checkbox" }
             FilterSection {}
             Console {}
             Footer {}

@@ -1,18 +1,16 @@
+use super::serial_monitor::AppState;
 use dioxus::prelude::*;
 
 #[component]
 pub fn FilterSection() -> Element {
+    let mut state = use_context::<AppState>();
+    let show_highlights = (state.show_highlights)();
+    let show_timestamps = (state.show_timestamps)();
+    let autoscroll = (state.autoscroll)();
+
     rsx! {
         div {
-            class: "shrink-0 px-5 py-3 z-10 flex flex-col gap-3 filter-section \
-                    peer-checked/highlight:[&_.highlight-panel]:max-h-[400px] peer-checked/highlight:[&_.highlight-panel]:opacity-100 peer-checked/highlight:[&_.highlight-panel]:visible peer-checked/highlight:[&_.highlight-panel]:mt-2 peer-checked/highlight:[&_.highlight-panel]:p-4 \
-                    peer-checked/highlight:[&_.highlight-icon-btn]:text-primary peer-checked/highlight:[&_.highlight-icon-btn]:bg-primary/10 peer-checked/highlight:[&_.highlight-icon-btn]:border-primary/50 \
-                    peer-checked/timestamp:[&_.timestamp-switch-bg]:bg-primary/80 peer-checked/timestamp:[&_.timestamp-switch-bg]:border-primary peer-checked/timestamp:[&_.timestamp-switch-bg]:shadow-[0_0_8px_rgba(0,191,255,0.4)] \
-                    peer-checked/timestamp:[&_.timestamp-switch-dot]:translate-x-3.5 peer-checked/timestamp:[&_.timestamp-switch-dot]:bg-white \
-                    peer-checked/timestamp:[&_.timestamp-label]:text-primary peer-checked/timestamp:[&_.timestamp-label]:font-bold \
-                    peer-checked/autoscroll:[&_.autoscroll-switch-bg]:bg-primary/80 peer-checked/autoscroll:[&_.autoscroll-switch-bg]:border-primary peer-checked/autoscroll:[&_.autoscroll-switch-bg]:shadow-[0_0_8px_rgba(0,191,255,0.4)] \
-                    peer-checked/autoscroll:[&_.autoscroll-switch-dot]:translate-x-3.5 peer-checked/autoscroll:[&_.autoscroll-switch-dot]:bg-white \
-                    peer-checked/autoscroll:[&_.autoscroll-label]:text-primary peer-checked/autoscroll:[&_.autoscroll-label]:font-bold",
+            class: "shrink-0 px-5 py-3 z-10 flex flex-col gap-3 filter-section",
             div { class: "flex gap-2 w-full items-stretch",
                 div { class: "relative flex-1 group",
                     span { class: "material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-600 text-[20px] group-focus-within:text-primary transition-colors",
@@ -44,14 +42,20 @@ pub fn FilterSection() -> Element {
                         }
                     }
                 }
-                label {
-                    class: "highlight-icon-btn w-12 flex items-center justify-center rounded-xl bg-[#0d0f10] border border-[#2a2e33] text-gray-500 hover:text-white hover:border-primary/50 cursor-pointer transition-all active:scale-95 shadow-inset-input",
-                    "for": "highlight-panel-toggle",
+                button {
+                    class: "highlight-icon-btn w-12 flex items-center justify-center rounded-xl border transition-all active:scale-95 shadow-inset-input",
+                    class: if show_highlights { "text-primary bg-primary/10 border-primary/50" } else { "bg-[#0d0f10] border-[#2a2e33] text-gray-500 hover:text-white hover:border-primary/50" },
+                    onclick: move |_| {
+                        let current = (state.show_highlights)();
+                        state.show_highlights.set(!current);
+                    },
                     title: "Highlighter",
                     span { class: "material-symbols-outlined text-[20px]", "ink_highlighter" }
                 }
             }
-            div { class: "highlight-panel max-h-0 opacity-0 overflow-hidden transition-all duration-300 bg-surface rounded-xl border border-white/10 shadow-lg visibility-hidden",
+            div {
+                class: "highlight-panel overflow-hidden transition-all duration-300 bg-surface rounded-xl border border-white/10 shadow-lg",
+                class: if show_highlights { "max-h-[400px] opacity-100 visible p-4 mt-2" } else { "max-h-0 opacity-0 invisible" },
                 div { class: "flex flex-col gap-3",
                     div { class: "flex items-center justify-between border-b border-white/5 pb-2",
                         span { class: "text-[11px] font-bold text-gray-500 uppercase tracking-widest", "Active Highlights" }
@@ -92,19 +96,49 @@ pub fn FilterSection() -> Element {
                 }
             }
             div { class: "flex items-center gap-6",
-                label { class: "flex items-center cursor-pointer group gap-2", "for": "timestamp-toggle",
+                button {
+                    class: "flex items-center cursor-pointer group gap-2",
+                    onclick: move |_| {
+                        let current = (state.show_timestamps)();
+                        state.show_timestamps.set(!current);
+                    },
                     div { class: "relative flex items-center",
-                        div { class: "timestamp-switch-bg w-7 h-3.5 bg-[#2a2e33] rounded-full transition-colors duration-200 group-hover:bg-[#34393e] border border-white/5" }
-                        div { class: "timestamp-switch-dot absolute left-0 w-3.5 h-3.5 bg-gray-500 rounded-full transition-all duration-200" }
+                        div {
+                            class: "w-7 h-3.5 rounded-full transition-all duration-200 border border-white/5",
+                            class: if show_timestamps { "bg-primary border-primary shadow-[0_0_8px_rgba(0,191,255,0.4)]" } else { "bg-[#2a2e33] group-hover:bg-[#34393e]" }
+                        }
+                        div {
+                            class: "absolute left-0 w-3.5 h-3.5 rounded-full transition-all duration-200",
+                            class: if show_timestamps { "translate-x-3.5 bg-white" } else { "bg-gray-500" }
+                        }
                     }
-                    span { class: "timestamp-label text-[10px] font-bold text-gray-500 uppercase tracking-widest group-hover:text-gray-300 transition-colors", "Timestamp" }
+                    span {
+                        class: "text-[10px] font-bold uppercase tracking-widest transition-colors",
+                        class: if show_timestamps { "text-primary" } else { "text-gray-500 group-hover:text-gray-300" },
+                        "Timestamp"
+                    }
                 }
-                label { class: "flex items-center cursor-pointer group gap-2", "for": "autoscroll-toggle",
+                button {
+                    class: "flex items-center cursor-pointer group gap-2",
+                    onclick: move |_| {
+                        let current = (state.autoscroll)();
+                        state.autoscroll.set(!current);
+                    },
                     div { class: "relative flex items-center",
-                        div { class: "autoscroll-switch-bg w-7 h-3.5 bg-[#2a2e33] rounded-full transition-colors duration-200 group-hover:bg-[#34393e] border border-white/5" }
-                        div { class: "autoscroll-switch-dot absolute left-0 w-3.5 h-3.5 bg-gray-500 rounded-full transition-all duration-200" }
+                        div {
+                            class: "w-7 h-3.5 rounded-full transition-all duration-200 border border-white/5",
+                            class: if autoscroll { "bg-primary border-primary shadow-[0_0_8px_rgba(0,191,255,0.4)]" } else { "bg-[#2a2e33] group-hover:bg-[#34393e]" }
+                        }
+                        div {
+                            class: "absolute left-0 w-3.5 h-3.5 rounded-full transition-all duration-200",
+                            class: if autoscroll { "translate-x-3.5 bg-white" } else { "bg-gray-500" }
+                        }
                     }
-                    span { class: "autoscroll-label text-[10px] font-bold text-gray-500 uppercase tracking-widest group-hover:text-gray-300 transition-colors leading-none", "Auto-scroll" }
+                    span {
+                        class: "text-[10px] font-bold uppercase tracking-widest transition-colors leading-none",
+                        class: if autoscroll { "text-primary" } else { "text-gray-500 group-hover:text-gray-300" },
+                        "Auto-scroll"
+                    }
                 }
                 div { class: "ml-auto text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2",
                     span { class: "w-1.5 h-1.5 rounded-full bg-primary animate-pulse" }

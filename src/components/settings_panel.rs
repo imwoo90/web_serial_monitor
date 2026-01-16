@@ -1,10 +1,15 @@
+use super::serial_monitor::AppState;
 use dioxus::prelude::*;
 
 #[component]
 pub fn SettingsPanel() -> Element {
+    let state = use_context::<AppState>();
+    let is_open = (state.show_settings)();
+
     rsx! {
         div {
-            class: "mx-5 bg-surface rounded-xl border border-white/10 shadow-2xl transition-all duration-300 max-h-0 opacity-0 overflow-hidden visibility-hidden z-50 absolute top-full left-0 right-0 mt-2 peer-checked/settings:max-h-[500px] peer-checked/settings:opacity-100 peer-checked/settings:visible peer-checked/settings:p-4 peer-checked/settings:mt-3",
+            class: "mx-5 bg-surface rounded-xl border border-white/10 shadow-2xl transition-all duration-300 overflow-hidden z-50 absolute top-full left-0 right-0",
+            class: if is_open { "max-h-[500px] opacity-100 visible p-4 mt-3" } else { "max-h-0 opacity-0 invisible mt-2" },
             id: "settings-panel",
             style: "width: calc(100% - 2.5rem);",
             div { class: "grid grid-cols-2 gap-x-4 gap-y-3",
