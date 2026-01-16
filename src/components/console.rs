@@ -1,5 +1,6 @@
 use crate::state::AppState;
 use dioxus::prelude::*;
+use std::rc::Rc;
 
 #[component]
 pub fn Console() -> Element {
@@ -12,6 +13,20 @@ pub fn Console() -> Element {
     let use_regex = (state.use_regex)();
     let invert_filter = (state.invert_filter)();
 
+    // 하단 감시 요소(Sentinel)의 핸들
+    let mut sentinel_handle = use_signal(|| None::<Rc<MountedData>>);
+
+    // Dioxus Idiomatic Scroll:
+    // JS 문자열 대신 감시 요소를 '화면 안으로 끌어당기는' 네이티브 API 호출
+    use_effect(move || {
+        if autoscroll {
+            if let Some(handle) = sentinel_handle.read().as_ref() {
+                // 이 핸들이 가리키는 요소를 즉시 화면 바닥에 정렬하도록 명령
+                let _ = handle.scroll_to(ScrollBehavior::Instant);
+            }
+        }
+    });
+
     rsx! {
         main { class: "flex-1 min-h-0 mx-4 mb-0 mt-0 relative group/console",
             div { class: "absolute inset-0 bg-console-bg rounded-t-2xl border-t border-x border-[#222629] shadow-[inset_0_0_20px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col",
@@ -21,6 +36,7 @@ pub fn Console() -> Element {
                 div {
                     class: "flex-1 overflow-y-auto p-4 font-mono text-xs md:text-sm leading-relaxed space-y-0.5 scrollbar-custom",
                     id: "console-output",
+                    // 1. 로그 리스트 출력
                     for (timestamp , text , base_class) in get_mock_logs() {
                         LogLine {
                             timestamp,
@@ -34,9 +50,27 @@ pub fn Console() -> Element {
                             highlights: highlights.clone(),
                         }
                     }
+
+                    // 2. 가시성 감시 및 스크롤 타겟 (Idiomatic Dioxus Sentinel)
+                    div {
+                        class: "h-px w-full pointer-events-none opacity-0",
+                        // 사용자의 스크롤 위치 감지
+                        onvisible: move |evt| {
+                            let visible = evt.data().is_intersecting().unwrap_or(false);
+                            if (state.autoscroll)() != visible {
+                                state.autoscroll.set(visible);
+                            }
+                        },
+                        // 이 요소의 핸들을 시그널에 보관
+                        onmounted: move |evt| sentinel_handle.set(Some(evt.data())),
+                    }
                 }
                 if !autoscroll {
-                    ResumeScrollButton { onclick: move |_| state.autoscroll.set(true) }
+                    ResumeScrollButton {
+                        onclick: move |_| {
+                            state.autoscroll.set(true);
+                        },
+                    }
                 }
             }
         }
@@ -54,7 +88,8 @@ fn ConsoleHeader(autoscroll: bool) -> Element {
             }
             div { class: "flex items-center gap-2",
                 if autoscroll {
-                    div { class: "text-[9px] font-mono text-primary/60 uppercase tracking-widest",
+                    div { class: "text-[9px] font-mono text-primary/60 uppercase tracking-widest flex items-center gap-1",
+                        span { class: "w-1 h-1 rounded-full bg-primary animate-pulse" }
                         "Tracking Bottom"
                     }
                 } else {
@@ -82,7 +117,6 @@ fn LogLine(
     invert_filter: bool,
     highlights: Vec<crate::state::Highlight>,
 ) -> Element {
-    // 1. Filtering Logic
     let mut is_visible = if filter_query.is_empty() {
         true
     } else if use_regex {
@@ -115,7 +149,6 @@ fn LogLine(
         };
     }
 
-    // 2. Highlighting Logic (Tag based)
     let mut parts = vec![text.to_string()];
     for h in highlights.iter() {
         let mut new_parts = Vec::new();

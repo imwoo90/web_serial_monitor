@@ -288,14 +288,6 @@ fn DisplayOptions() -> Element {
                     state.show_timestamps.set(!current);
                 }
             }
-            ToggleSwitch {
-                label: "Auto-scroll",
-                active: (state.autoscroll)(),
-                onclick: move |_| {
-                    let current = (state.autoscroll)();
-                    state.autoscroll.set(!current);
-                }
-            }
             div { class: "ml-auto text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2",
                 span { class: "w-1.5 h-1.5 rounded-full bg-primary animate-pulse" }
                 "Live"
