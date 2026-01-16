@@ -1,71 +1,239 @@
 use crate::state::AppState;
 use dioxus::prelude::*;
+use gloo_timers::future::TimeoutFuture;
+use serde::{Deserialize, Serialize};
 use std::rc::Rc;
+use wasm_bindgen::prelude::*;
+use web_sys::{MessageEvent, Worker};
+
+/// Web Worker와 통신하기 위한 메시지 프로토콜
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(tag = "type", content = "data")]
+enum WorkerMsg {
+    #[serde(rename = "INITIALIZED")]
+    Initialized(String),
+    #[serde(rename = "TOTAL_LINES")]
+    TotalLines(usize),
+    #[serde(rename = "LOG_WINDOW")]
+    LogWindow {
+        #[serde(rename = "startLine")]
+        start_line: usize,
+        lines: Vec<String>,
+    },
+    #[serde(rename = "APPEND_LOG")]
+    AppendLog(String),
+    #[serde(rename = "REQUEST_WINDOW")]
+    RequestWindow {
+        #[serde(rename = "startLine")]
+        start_line: usize,
+        count: usize,
+    },
+}
+
+/// 한 줄 높이 (px) 정의
+const LINE_HEIGHT: f64 = 20.0;
+/// 헤더 및 여백 높이 (px)
+const HEADER_OFFSET: f64 = 150.0;
+/// 가상 스크롤 렌더링을 위한 상단 버퍼 (줄)
+const TOP_BUFFER: usize = 10;
+/// 가상 스크롤 렌더링을 위한 하단 추가 버퍼 (줄)
+const BOTTOM_BUFFER_EXTRA: usize = 40; // window_size 계산 시 TOP_BUFFER + 40
 
 #[component]
 pub fn Console() -> Element {
     let mut state = use_context::<AppState>();
-    let show_timestamps = (state.show_timestamps)();
-    let autoscroll = (state.autoscroll)();
-    let highlights = (state.highlights)();
-    let filter_query = (state.filter_query)();
-    let match_case = (state.match_case)();
-    let use_regex = (state.use_regex)();
-    let invert_filter = (state.invert_filter)();
 
-    // 하단 감시 요소(Sentinel)의 핸들
+    // Core Signals
+    let mut worker = use_signal(|| None::<Worker>);
+    let mut visible_logs = use_signal(|| Vec::<String>::new());
+    let mut total_lines = use_signal(|| 0usize);
+    let mut start_index = use_signal(|| 0usize);
+
+    // Layout Signals
+    let mut console_height = use_signal(|| 600.0);
+    // 윈도우 사이즈 계산 (상하단 충분한 버퍼 확보)
+    let window_size =
+        ((console_height() / LINE_HEIGHT).ceil() as usize) + TOP_BUFFER + BOTTOM_BUFFER_EXTRA;
+
+    // DOM Handles
+    let mut console_handle = use_signal(|| None::<Rc<MountedData>>);
     let mut sentinel_handle = use_signal(|| None::<Rc<MountedData>>);
 
-    // Dioxus Idiomatic Scroll:
-    // JS 문자열 대신 감시 요소를 '화면 안으로 끌어당기는' 네이티브 API 호출
+    // 1. Worker 초기화 및 메시지 핸들러
     use_effect(move || {
-        if autoscroll {
-            if let Some(handle) = sentinel_handle.read().as_ref() {
-                // 이 핸들이 가리키는 요소를 즉시 화면 바닥에 정렬하도록 명령
+        let worker_path = asset!("/assets/log_worker.js").to_string();
+        let w = Worker::new(&worker_path).expect("Failed to create worker");
+
+        let onmessage = Closure::wrap(Box::new(move |e: MessageEvent| {
+            if let Ok(msg) = serde_wasm_bindgen::from_value::<WorkerMsg>(e.data()) {
+                match msg {
+                    WorkerMsg::TotalLines(count) => total_lines.set(count),
+                    WorkerMsg::LogWindow { lines, .. } => visible_logs.set(lines),
+                    _ => {}
+                }
+            }
+        }) as Box<dyn FnMut(MessageEvent)>);
+
+        w.set_onmessage(Some(onmessage.as_ref().unchecked_ref()));
+        onmessage.forget();
+        worker.set(Some(w));
+    });
+
+    // 2. Window Resize 핸들러 (패닉 방지를 위한 동기적 처리)
+    use_effect(move || {
+        let mut update_height = move || {
+            let window = web_sys::window().unwrap();
+            if let Ok(h) = window.inner_height() {
+                if let Some(h) = h.as_f64() {
+                    console_height.set((h - HEADER_OFFSET).max(100.0));
+
+                    // 자동 스크롤 활성화 시, 리사이즈 중에도 바닥 고정 강제
+                    if (state.autoscroll)() {
+                        if let Some(sentinel) = sentinel_handle.peek().as_ref() {
+                            let _ = sentinel.scroll_to(ScrollBehavior::Instant);
+                        }
+                    }
+                }
+            }
+        };
+
+        // 초기 실행
+        update_height();
+
+        let onresize = Closure::wrap(Box::new(update_height) as Box<dyn FnMut()>);
+        let window = web_sys::window().unwrap();
+        window.set_onresize(Some(onresize.as_ref().unchecked_ref()));
+        onresize.forget();
+    });
+
+    // 3. 로그 데이터 윈도우 요청 (start_index 또는 window_size 변경 시)
+    use_effect(move || {
+        let start = start_index();
+        let size = window_size;
+        total_lines(); // 전체 라인 수 변화도 구독
+
+        if let Some(w) = worker.peek().as_ref() {
+            let msg = WorkerMsg::RequestWindow {
+                start_line: start,
+                count: size,
+            };
+            if let Ok(js_obj) = serde_wasm_bindgen::to_value(&msg) {
+                let _ = w.post_message(&js_obj);
+            }
+        }
+    });
+
+    // 4. 자동 스크롤 (Tracking Bottom)
+    use_effect(move || {
+        total_lines();
+        if (state.autoscroll)() {
+            if let Some(handle) = sentinel_handle.peek().as_ref() {
                 let _ = handle.scroll_to(ScrollBehavior::Instant);
             }
         }
     });
 
+    // 5. 테스트용 로그 시뮬레이터 (추후 제거 가능)
+    use_resource(move || async move {
+        let mut count = 0;
+        loop {
+            TimeoutFuture::new(50).await;
+            if let Some(w) = worker.peek().as_ref() {
+                let now = js_sys::Date::new_0();
+                let log = format!(
+                    "[{:02}:{:02}:{:02}] RX DATA: PKT_{:05} STATUS=OK TEMP=24.5C",
+                    now.get_hours(),
+                    now.get_minutes(),
+                    now.get_seconds(),
+                    count
+                );
+                let msg = WorkerMsg::AppendLog(log);
+                if let Ok(js_obj) = serde_wasm_bindgen::to_value(&msg) {
+                    let _ = w.post_message(&js_obj);
+                }
+                count += 1;
+            }
+        }
+    });
+
+    let total_height = (total_lines() as f64) * LINE_HEIGHT;
+    let offset_top = (start_index() as f64) * LINE_HEIGHT;
+
     rsx! {
         main { class: "flex-1 min-h-0 mx-4 mb-0 mt-0 relative group/console",
             div { class: "absolute inset-0 bg-console-bg rounded-t-2xl border-t border-x border-[#222629] shadow-[inset_0_0_20px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col",
+                // 스캔라인 효과 (데코레이션)
                 div { class: "absolute inset-0 scanlines opacity-20 pointer-events-none z-10" }
-                ConsoleHeader { autoscroll }
+
+                ConsoleHeader { autoscroll: (state.autoscroll)(), count: total_lines() }
 
                 div {
-                    class: "flex-1 overflow-y-auto p-4 font-mono text-xs md:text-sm leading-relaxed space-y-0.5 scrollbar-custom",
+                    class: "flex-1 overflow-y-auto font-mono text-xs md:text-sm leading-relaxed scrollbar-custom relative",
                     id: "console-output",
-                    // 1. 로그 리스트 출력
-                    for (timestamp , text , base_class) in get_mock_logs() {
-                        LogLine {
-                            timestamp,
-                            text,
-                            base_class,
-                            show_timestamps,
-                            filter_query: filter_query.clone(),
-                            match_case,
-                            use_regex,
-                            invert_filter,
-                            highlights: highlights.clone(),
+                    // 마운트 시 핸들 저장 및 초기 높이 설정
+                    onmounted: move |evt| {
+                        let handle = evt.data();
+                        let h_clone = handle.clone();
+                        spawn(async move {
+                            if let Ok(rect) = h_clone.get_client_rect().await {
+                                console_height.set(rect.height());
+                            }
+                        });
+                        console_handle.set(Some(handle));
+                    },
+                    // 스크롤 핸들러: 가상 윈도우 인덱스 계산
+                    onscroll: move |_| {
+                        let handle = console_handle.peek().as_ref().cloned();
+                        spawn(async move {
+                            if let Some(handle) = handle {
+                                if let Ok(offset) = handle.get_scroll_offset().await {
+                                    let raw_index = (offset.y / LINE_HEIGHT).floor() as usize;
+                                    // 상단 버퍼만큼 미리 렌더링
+                                    let new_index = raw_index.saturating_sub(TOP_BUFFER);
+
+                                    if start_index() != new_index {
+                                        start_index.set(new_index);
+                                    }
+                                }
+                            }
+                        });
+                    },
+
+                    // 1. 가상 스크롤 높이 확보용 Spacer
+                    div { style: "height: {total_height}px; width: 100%; position: absolute; top: 0; left: 0; pointer-events: none;" }
+
+                    // 2. 실제 렌더링 영역 (Transform으로 위치 조정)
+                    // padding-bottom 20px 추가로 하단 잘림 방지 (SafeArea)
+                    div { style: "position: absolute; top: 0; left: 0; right: 0; transform: translateY({offset_top}px); padding: 0.5rem 1rem 20px 1rem; pointer-events: auto;",
+                        for text in visible_logs.read().iter() {
+                            div {
+                                style: "height: {LINE_HEIGHT}px;",
+                                class: "flex gap-2 text-gray-300 whitespace-pre text-[12px] items-center",
+                                "{text}"
+                            }
+                        }
+                        // 초기 로딩 인디케이터
+                        if visible_logs.read().is_empty() && total_lines() > 0 {
+                            div { class: "text-gray-500 animate-pulse text-[12px] px-4",
+                                "Loading buffer..."
+                            }
                         }
                     }
 
-                    // 2. 가시성 감시 및 스크롤 타겟 (Idiomatic Dioxus Sentinel)
+                    // 3. 바닥 감시자 (Sentinel)
                     div {
-                        class: "h-px w-full pointer-events-none opacity-0",
-                        // 사용자의 스크롤 위치 감지
+                        style: "position: absolute; top: {total_height}px; height: 1px; width: 100%; pointer-events: none;",
                         onvisible: move |evt| {
                             let visible = evt.data().is_intersecting().unwrap_or(false);
                             if (state.autoscroll)() != visible {
                                 state.autoscroll.set(visible);
                             }
                         },
-                        // 이 요소의 핸들을 시그널에 보관
                         onmounted: move |evt| sentinel_handle.set(Some(evt.data())),
                     }
                 }
-                if !autoscroll {
+
+                if !(state.autoscroll)() {
                     ResumeScrollButton {
                         onclick: move |_| {
                             state.autoscroll.set(true);
@@ -78,13 +246,16 @@ pub fn Console() -> Element {
 }
 
 #[component]
-fn ConsoleHeader(autoscroll: bool) -> Element {
+fn ConsoleHeader(autoscroll: bool, count: usize) -> Element {
     rsx! {
         div { class: "shrink-0 h-6 bg-[#16181a] border-b border-[#222629] flex items-center justify-between px-3",
-            div { class: "flex gap-1.5",
-                div { class: "w-2 h-2 rounded-full bg-[#394f56]" }
-                div { class: "w-2 h-2 rounded-full bg-[#394f56]" }
-                div { class: "w-2 h-2 rounded-full bg-[#394f56]" }
+            div { class: "flex items-center gap-4",
+                div { class: "flex gap-1.5",
+                    div { class: "w-2 h-2 rounded-full bg-[#394f56]" }
+                    div { class: "w-2 h-2 rounded-full bg-[#394f56]" }
+                    div { class: "w-2 h-2 rounded-full bg-[#394f56]" }
+                }
+                span { class: "text-[10px] text-gray-500 font-mono", "[ LINES: {count} / OPFS ENABLED ]" }
             }
             div { class: "flex items-center gap-2",
                 if autoscroll {
@@ -106,104 +277,6 @@ fn ConsoleHeader(autoscroll: bool) -> Element {
 }
 
 #[component]
-fn LogLine(
-    timestamp: &'static str,
-    text: &'static str,
-    base_class: &'static str,
-    show_timestamps: bool,
-    filter_query: String,
-    match_case: bool,
-    use_regex: bool,
-    invert_filter: bool,
-    highlights: Vec<crate::state::Highlight>,
-) -> Element {
-    let mut is_visible = if filter_query.is_empty() {
-        true
-    } else if use_regex {
-        if let Ok(re) = if match_case {
-            regex::Regex::new(&filter_query)
-        } else {
-            regex::RegexBuilder::new(&filter_query)
-                .case_insensitive(true)
-                .build()
-        } {
-            re.is_match(text)
-        } else {
-            true
-        }
-    } else {
-        if match_case {
-            text.contains(&filter_query)
-        } else {
-            text.to_lowercase().contains(&filter_query.to_lowercase())
-        }
-    };
-
-    if invert_filter {
-        is_visible = !is_visible;
-    }
-
-    if !is_visible {
-        return rsx! {
-            div { class: "hidden" }
-        };
-    }
-
-    let mut parts = vec![text.to_string()];
-    for h in highlights.iter() {
-        let mut new_parts = Vec::new();
-        for part in parts {
-            if part.contains(&h.text) && !part.starts_with("\x01") {
-                let split_parts: Vec<&str> = part.split(&h.text).collect();
-                for (i, p) in split_parts.iter().enumerate() {
-                    if i > 0 {
-                        new_parts.push(format!("\x01{}\x01{}", h.id, h.text));
-                    }
-                    if !p.is_empty() {
-                        new_parts.push(p.to_string());
-                    }
-                }
-            } else {
-                new_parts.push(part);
-            }
-        }
-        parts = new_parts;
-    }
-
-    rsx! {
-        div { class: "flex gap-2 {base_class} transition-all duration-300",
-            if show_timestamps {
-                span { class: "log-timestamp text-[#4a555a] shrink-0 tabular-nums select-none",
-                    "{timestamp}"
-                }
-            }
-            span { class: "whitespace-pre-wrap",
-                for part in parts {
-                    if part.starts_with("\x01") {
-                        {
-                            let marker_end = part[1..].find('\x01').unwrap_or(0) + 1;
-                            let id_str = &part[1..marker_end];
-                            let match_text = &part[marker_end + 1..];
-                            let id = id_str.parse::<usize>().unwrap_or(0);
-
-                            let h = highlights.iter().find(|h| h.id == id);
-                            let color = h.map(|h| h.color).unwrap_or("primary");
-                            let highlight_class = get_highlight_class(color);
-
-                            rsx! {
-                                span { class: "{highlight_class}", "{match_text}" }
-                            }
-                        }
-                    } else {
-                        "{part}"
-                    }
-                }
-            }
-        }
-    }
-}
-
-#[component]
 fn ResumeScrollButton(onclick: EventHandler<MouseEvent>) -> Element {
     rsx! {
         button {
@@ -215,59 +288,4 @@ fn ResumeScrollButton(onclick: EventHandler<MouseEvent>) -> Element {
             }
         }
     }
-}
-
-fn get_highlight_class(color: &str) -> &'static str {
-    match color {
-        "red" => "text-red-400 font-bold",
-        "blue" => "text-blue-400 font-bold",
-        "yellow" => "text-yellow-400 font-bold",
-        "green" => "text-green-400 font-bold",
-        "purple" => "text-purple-400 font-bold",
-        "orange" => "text-orange-400 font-bold",
-        "teal" => "text-teal-400 font-bold",
-        "pink" => "text-pink-400 font-bold",
-        "indigo" => "text-indigo-400 font-bold",
-        "lime" => "text-lime-400 font-bold",
-        "cyan" => "text-cyan-400 font-bold",
-        "rose" => "text-rose-400 font-bold",
-        "fuchsia" => "text-fuchsia-400 font-bold",
-        "amber" => "text-amber-400 font-bold",
-        "emerald" => "text-emerald-400 font-bold",
-        "sky" => "text-sky-400 font-bold",
-        "violet" => "text-violet-400 font-bold",
-        _ => "text-primary font-bold",
-    }
-}
-
-fn get_mock_logs() -> Vec<(&'static str, &'static str, &'static str)> {
-    vec![
-        (
-            "[10:41:58]",
-            "Connecting to port COM3...",
-            "text-gray-500 opacity-50",
-        ),
-        (
-            "[10:42:01]",
-            "System initialization started",
-            "text-gray-300",
-        ),
-        (
-            "[10:42:01]",
-            "Bootloader v2.1.4 check... PASS",
-            "text-gray-300",
-        ),
-        ("[10:42:02]", "Loading kernel modules", "text-gray-300"),
-        (
-            "[10:42:03]",
-            "RX: <DATA_PACKET_01 id=\"442\" val=\"0x4F\">",
-            "text-gray-300",
-        ),
-        (
-            "[10:42:08]",
-            "Warning: Pressure drift detected (-1hPa)",
-            "text-gray-300",
-        ),
-        ("[10:42:15]", "Sensor array read complete", "text-gray-300"),
-    ]
 }
