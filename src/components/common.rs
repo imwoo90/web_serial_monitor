@@ -1,20 +1,17 @@
 use dioxus::prelude::*;
 
+/// A reusable custom select component with premium styling.
 #[component]
 pub fn CustomSelect(
     options: Vec<&'static str>,
     selected: Signal<&'static str>,
     onchange: EventHandler<&'static str>,
-    class: Option<&'static str>,
+    #[props(default = "w-full")] class: &'static str,
 ) -> Element {
     let mut is_open = use_signal(|| false);
 
-    // Default class if none provided
-    let base_class = class.unwrap_or("w-full");
-
     rsx! {
-        div { class: "relative {base_class} group/select",
-            // Trigger Button
+        div { class: "relative {class} group/select",
             button {
                 class: "w-full flex items-center justify-between bg-[#0d0f10] border border-[#2a2e33] rounded-lg text-xs font-bold text-gray-300 py-2 px-3 hover:bg-[#16181a] hover:border-primary/50 transition-all duration-200 outline-none focus:border-primary/50",
                 onclick: move |e| {
@@ -29,9 +26,7 @@ pub fn CustomSelect(
                 }
             }
 
-            // Dropdown Menu
             if is_open() {
-                // Backdrop to close when clicking outside
                 div {
                     class: "fixed inset-0 z-40 cursor-default",
                     onclick: move |_| is_open.set(false)
@@ -51,6 +46,70 @@ pub fn CustomSelect(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+/// A standard header for panels like Highlights or Settings.
+#[component]
+pub fn PanelHeader(title: &'static str, subtitle: Option<String>) -> Element {
+    rsx! {
+        div { class: "flex items-center justify-between border-b border-white/5 pb-2",
+            span { class: "text-[11px] font-bold text-gray-500 uppercase tracking-widest", "{title}" }
+            if let Some(sub) = subtitle {
+                span { class: "text-[10px] text-gray-600", "{sub}" }
+            }
+        }
+    }
+}
+
+/// A reusable icon-only button with consistent hover and active states.
+#[component]
+pub fn IconButton(
+    icon: &'static str,
+    onclick: EventHandler<MouseEvent>,
+    #[props(default = false)] active: bool,
+    #[props(default = "")] title: &'static str,
+    #[props(default = "")] class: &'static str,
+    #[props(default = "text-[20px]")] icon_class: &'static str,
+) -> Element {
+    rsx! {
+        button {
+            class: "flex items-center justify-center transition-all active:scale-95 {class}",
+            class: if active { "text-primary bg-primary/10 border-primary/50" } else { "text-gray-500 hover:text-white" },
+            onclick: move |evt| onclick.call(evt),
+            title: "{title}",
+            span { class: "material-symbols-outlined {icon_class}", "{icon}" }
+        }
+    }
+}
+
+/// A toggle switch for boolean settings.
+#[component]
+pub fn ToggleSwitch(
+    label: &'static str,
+    active: bool,
+    onclick: EventHandler<MouseEvent>,
+) -> Element {
+    rsx! {
+        button {
+            class: "flex items-center cursor-pointer group gap-2",
+            onclick: move |evt| onclick.call(evt),
+            div { class: "relative flex items-center",
+                div {
+                    class: "w-7 h-3.5 rounded-full transition-all duration-200 border border-white/5",
+                    class: if active { "bg-primary border-primary shadow-[0_0_8px_rgba(0,191,255,0.4)]" } else { "bg-[#2a2e33] group-hover:bg-[#34393e]" }
+                }
+                div {
+                    class: "absolute left-0 w-3.5 h-3.5 rounded-full transition-all duration-200",
+                    class: if active { "translate-x-3.5 bg-white" } else { "bg-gray-500" }
+                }
+            }
+            span {
+                class: "text-[10px] font-bold uppercase tracking-widest transition-colors leading-none",
+                class: if active { "text-primary" } else { "text-gray-500 group-hover:text-gray-300" },
+                "{label}"
             }
         }
     }

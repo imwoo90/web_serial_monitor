@@ -1,4 +1,4 @@
-use crate::state::{AppState, Highlight, LineEnding};
+use crate::state::{AppState, LineEnding};
 use dioxus::prelude::*;
 
 use super::console::Console;

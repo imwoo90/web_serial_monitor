@@ -1,4 +1,4 @@
-use crate::components::common::CustomSelect;
+use crate::components::common::{CustomSelect, IconButton};
 use crate::state::AppState;
 use dioxus::prelude::*;
 
@@ -6,6 +6,12 @@ use dioxus::prelude::*;
 pub fn Header() -> Element {
     let mut state = use_context::<AppState>();
     let is_open = (state.show_settings)();
+
+    let settings_icon_class = if is_open {
+        "text-[20px] transition-all duration-300 rotate-45"
+    } else {
+        "text-[20px] transition-all duration-300"
+    };
 
     rsx! {
         header { class: "shrink-0 pt-6 px-5 pb-2 flex flex-col gap-4 z-20",
@@ -41,17 +47,16 @@ pub fn Header() -> Element {
                     class: "flex-1"
                 }
 
-                button {
-                    class: "bg-surface border border-white/5 rounded-lg px-2.5 flex items-center justify-center cursor-pointer hover:bg-[#222528] active:scale-95 transition-all text-gray-500",
+                IconButton {
+                    icon: "settings",
+                    active: is_open,
+                    class: "w-10 h-10 bg-surface border border-white/5 rounded-lg",
+                    icon_class: settings_icon_class,
                     onclick: move |_| {
                         let current = (state.show_settings)();
                         state.show_settings.set(!current);
                     },
-                    span {
-                        class: "material-symbols-outlined settings-icon text-[20px] transition-all duration-300",
-                        class: if is_open { "text-primary rotate-45" } else { "text-gray-500" },
-                        "settings"
-                    }
+                    title: "Settings"
                 }
             }
         }

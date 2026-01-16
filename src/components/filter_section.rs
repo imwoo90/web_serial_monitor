@@ -1,3 +1,4 @@
+use crate::components::common::{IconButton, PanelHeader, ToggleSwitch};
 use crate::state::{AppState, Highlight, HIGHLIGHT_COLORS};
 use dioxus::prelude::*;
 
@@ -11,13 +12,16 @@ pub fn FilterSection() -> Element {
             class: "shrink-0 px-5 py-3 z-10 flex flex-col gap-3 filter-section",
             div { class: "flex gap-2 w-full items-stretch",
                 FilterInput {}
-                HighlightToggle {
+                IconButton {
+                    icon: "ink_highlighter",
                     active: show_highlights,
+                    class: "w-12 h-10 rounded-xl border border-[#2a2e33] bg-[#0d0f10] shadow-inset-input",
                     onclick: move |_| {
                         let mut state = use_context::<AppState>();
                         let current = (state.show_highlights)();
                         state.show_highlights.set(!current);
-                    }
+                    },
+                    title: "Toggle Highlights"
                 }
             }
             HighlightPanel { visible: show_highlights }
@@ -103,19 +107,6 @@ fn FilterOptionButton(
 }
 
 #[component]
-fn HighlightToggle(active: bool, onclick: EventHandler<MouseEvent>) -> Element {
-    rsx! {
-        button {
-            class: "highlight-icon-btn w-12 flex items-center justify-center rounded-xl border transition-all active:scale-95 shadow-inset-input",
-            class: if active { "text-primary bg-primary/10 border-primary/50" } else { "bg-[#0d0f10] border-[#2a2e33] text-gray-500 hover:text-white hover:border-primary/50" },
-            onclick: move |evt| onclick.call(evt),
-            title: "Highlighter",
-            span { class: "material-symbols-outlined text-[20px]", "ink_highlighter" }
-        }
-    }
-}
-
-#[component]
 fn HighlightPanel(visible: bool) -> Element {
     let state = use_context::<AppState>();
     let highlights = (state.highlights)();
@@ -125,9 +116,9 @@ fn HighlightPanel(visible: bool) -> Element {
             class: "highlight-panel overflow-hidden transition-all duration-300 bg-surface rounded-xl border border-white/10 shadow-lg",
             class: if visible { "max-h-[400px] opacity-100 visible p-4 mt-2" } else { "max-h-0 opacity-0 invisible" },
             div { class: "flex flex-col gap-3",
-                div { class: "flex items-center justify-between border-b border-white/5 pb-2",
-                    span { class: "text-[11px] font-bold text-gray-500 uppercase tracking-widest", "Active Highlights" }
-                    span { class: "text-[10px] text-gray-600", "{highlights.len()} active rules" }
+                PanelHeader {
+                    title: "Active Highlights",
+                    subtitle: Some(format!("{} active rules", highlights.len()))
                 }
                 div { class: "flex flex-wrap gap-2",
                     for h in highlights {
@@ -220,10 +211,11 @@ fn HighlightTag(color: &'static str, label: String, onremove: EventHandler<Mouse
     rsx! {
         div { class: "flex items-center gap-2 pl-3 pr-2 py-1.5 bg-[#0d0f10] border {border_class} rounded-full group transition-colors",
             span { class: "text-xs font-bold {text_class}", "{label}" }
-            button {
-                class: "ml-1 hover:text-white text-gray-500 rounded-full w-4 h-4 flex items-center justify-center transition-colors",
-                onclick: move |evt| onremove.call(evt),
-                span { class: "material-symbols-outlined text-[14px]", "close" }
+            IconButton {
+                icon: "close",
+                icon_class: "text-[14px]",
+                class: "ml-1 w-4 h-4 rounded-full",
+                onclick: move |evt| onremove.call(evt)
             }
         }
     }
@@ -239,7 +231,6 @@ fn HighlightInput() -> Element {
             let mut state = use_context::<AppState>();
             let mut list = state.highlights.read().clone();
 
-            // Find first color not currently in use
             let used_colors: std::collections::HashSet<&str> =
                 list.iter().map(|h| h.color).collect();
             let color = HIGHLIGHT_COLORS
@@ -285,25 +276,22 @@ fn HighlightInput() -> Element {
 
 #[component]
 fn DisplayOptions() -> Element {
-    let show_timestamps = (use_context::<AppState>().show_timestamps)();
-    let autoscroll = (use_context::<AppState>().autoscroll)();
+    let mut state = use_context::<AppState>();
 
     rsx! {
         div { class: "flex items-center gap-6",
             ToggleSwitch {
                 label: "Timestamp",
-                active: show_timestamps,
+                active: (state.show_timestamps)(),
                 onclick: move |_| {
-                    let mut state = use_context::<AppState>();
                     let current = (state.show_timestamps)();
                     state.show_timestamps.set(!current);
                 }
             }
             ToggleSwitch {
                 label: "Auto-scroll",
-                active: autoscroll,
+                active: (state.autoscroll)(),
                 onclick: move |_| {
-                    let mut state = use_context::<AppState>();
                     let current = (state.autoscroll)();
                     state.autoscroll.set(!current);
                 }
@@ -311,31 +299,6 @@ fn DisplayOptions() -> Element {
             div { class: "ml-auto text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2",
                 span { class: "w-1.5 h-1.5 rounded-full bg-primary animate-pulse" }
                 "Live"
-            }
-        }
-    }
-}
-
-#[component]
-fn ToggleSwitch(label: &'static str, active: bool, onclick: EventHandler<MouseEvent>) -> Element {
-    rsx! {
-        button {
-            class: "flex items-center cursor-pointer group gap-2 icon-button",
-            onclick: move |evt| onclick.call(evt),
-            div { class: "relative flex items-center",
-                div {
-                    class: "w-7 h-3.5 rounded-full transition-all duration-200 border border-white/5",
-                    class: if active { "bg-primary border-primary shadow-[0_0_8px_rgba(0,191,255,0.4)]" } else { "bg-[#2a2e33] group-hover:bg-[#34393e]" }
-                }
-                div {
-                    class: "absolute left-0 w-3.5 h-3.5 rounded-full transition-all duration-200",
-                    class: if active { "translate-x-3.5 bg-white" } else { "bg-gray-500" }
-                }
-            }
-            span {
-                class: "text-[10px] font-bold uppercase tracking-widest transition-colors leading-none",
-                class: if active { "text-primary" } else { "text-gray-500 group-hover:text-gray-300" },
-                "{label}"
             }
         }
     }
