@@ -8,6 +8,7 @@ edition = "2021"
 
 [dependencies]
 dioxus = { version = "0.7.1", features = ["document", "asset", "web", "html", "macro", "hooks", "signals"] }
+regex = "1.12.2"
 
 [features]
 default = ["web"]
