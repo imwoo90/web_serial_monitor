@@ -3,7 +3,7 @@ use dioxus::prelude::*;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 
-/// 윈도우 리사이즈 이벤트를 처리하여 콘솔 높이를 조정하는 훅
+/// Hook to handle window resize events and adjust console height
 pub fn use_window_resize(
     mut console_height: Signal<f64>,
     autoscroll: Signal<bool>,
@@ -17,7 +17,7 @@ pub fn use_window_resize(
                 .map(|jv| jv.as_f64())
             {
                 console_height.set((h - HEADER_OFFSET).max(100.0));
-                // 자동 스크롤 활성화 시, 리사이즈 중에도 바닥 고정 강제
+                // Force scroll to bottom during resize if autoscroll is enabled
                 if (autoscroll)() {
                     if let Some(s) = sentinel.peek().as_ref() {
                         let _ = s.scroll_to(ScrollBehavior::Instant);
@@ -25,7 +25,7 @@ pub fn use_window_resize(
                 }
             }
         };
-        update(); // 초기 실행
+        update(); // Initial execution
         let onresize = Closure::wrap(Box::new(update) as Box<dyn FnMut()>);
         web_sys::window()
             .unwrap()
@@ -34,14 +34,14 @@ pub fn use_window_resize(
     });
 }
 
-/// 자동 스크롤 기능을 관리하는 훅
+/// Hook to manage auto-scroll functionality
 pub fn use_auto_scroller(
     autoscroll: Signal<bool>,
     total_lines: Signal<usize>,
     sentinel: Signal<Option<Rc<MountedData>>>,
 ) {
     use_effect(move || {
-        total_lines(); // 전체 라인 수 변화에 반응
+        total_lines(); // React to changes in total line count
         if (autoscroll)() {
             if let Some(h) = sentinel.peek().as_ref() {
                 let _ = h.scroll_to(ScrollBehavior::Instant);

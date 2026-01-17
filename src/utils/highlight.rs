@@ -1,6 +1,6 @@
 use crate::state::Highlight;
 
-/// 로그 텍스트를 처리하여 타임스탬프 제거 및 하이라이트 세그먼트로 분할
+/// Processes log text to remove timestamps and split into highlight segments
 pub fn process_log_segments(
     text: &str,
     highlights: &[Highlight],
@@ -31,13 +31,13 @@ pub fn process_log_segments(
             let mut found_for_keyword = false;
 
             for (seg_text, color) in segments {
-                // 이미 색칠된 세그먼트는 패스
+                // Skip segments that are already colored
                 if color.is_some() {
                     next_segments.push((seg_text, color));
                     continue;
                 }
 
-                // 키워드 검색 (라인 당 현재는 1회만 처리됨 - split_once)
+                // Search for keyword (currently processed only once per line using split_once)
                 if !found_for_keyword && seg_text.contains(&h.text) {
                     if let Some((prefix, suffix)) = seg_text.split_once(&h.text) {
                         if !prefix.is_empty() {

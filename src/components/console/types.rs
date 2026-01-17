@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-/// Web Worker와 통신하기 위한 메시지 프로토콜
+/// Message protocol for communicating with Web Worker
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "type", content = "data")]
 pub enum WorkerMsg {

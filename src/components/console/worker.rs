@@ -3,7 +3,7 @@ use dioxus::prelude::*;
 use wasm_bindgen::prelude::*;
 use web_sys::{MessageEvent, Worker};
 
-/// Web Worker리를 초기화하고 메시지를 처리하는 훅
+/// Hook to initialize Web Worker and handle messages
 pub fn use_log_worker(
     mut total_lines: Signal<usize>,
     mut visible_logs: Signal<Vec<String>>,
@@ -44,7 +44,7 @@ pub fn use_log_worker(
     });
 }
 
-/// Worker에 로그 데이터 윈도우를 요청하는 훅
+/// Hook to request a window of log data from Worker
 pub fn use_data_request(
     start_index: Signal<usize>,
     window_size: usize,
@@ -53,7 +53,7 @@ pub fn use_data_request(
 ) {
     use_effect(move || {
         let start = start_index();
-        total_lines(); // 전체 라인 수 변화도 구독
+        total_lines(); // Also subscribe to changes in total line count
         if let Some(w) = worker.peek().as_ref() {
             let msg = WorkerMsg::RequestWindow {
                 start_line: start,
