@@ -4,6 +4,7 @@
 ![Dioxus](https://img.shields.io/badge/Dioxus-0.6-blue?style=for-the-badge)
 ![WASM](https://img.shields.io/badge/WebAssembly-purple?style=for-the-badge)
 ![License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-1.0.0-blue?style=for-the-badge)
 
 A high-performance, browser-based Serial Monitor that requires **no installation**. Built with **Rust (Dioxus)** and **WebAssembly**, it provides a desktop-class experience directly in your browser.
 
@@ -19,7 +20,7 @@ Unlike typical web serial tools, this project leverages **OPFS (Origin Private F
 ### 🚀 Performance & Core
 *   **Web Serial API**: Connect to COM ports / TTY devices directly from Chrome/Edge. No drivers or software installation needed.
 *   **High-Performance Logging**: Handles **millions of log lines** seamlessly using **OPFS** (Persistent Storage) and asynchronous stream processing.
-*   **Zero-Lag UI**: Implements **Virtual Scrolling** to render only visible items, keeping memory usage low even with massive datasets.
+*   **Zero-Lag UI**: Implements **Virtual Scrolling** to render only visible items, keeping memory usage low even with massive datasets. Includes **Robust Auto-Scroll** that tracks the bottom reliably even during mode switches (Text/Hex).
 *   **Non-Blocking Filter**: Background worker handles search/filtering efficiently using a **Progressive Scan & Yield** algorithm, ensuring the UI never freezes.
 
 ### 🛠️ Advanced Tools
