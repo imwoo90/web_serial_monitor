@@ -1,9 +1,4 @@
-pub fn format_hex(data: &[u8]) -> String {
-    data.iter()
-        .map(|b| format!("{:02X}", b))
-        .collect::<Vec<String>>()
-        .join(" ")
-}
+// function format_hex removed
 
 pub fn parse_hex_string(input: &str) -> Result<Vec<u8>, String> {
     // Remove allowed separators (space, colon, dash) and 0x prefix
@@ -46,11 +41,7 @@ pub fn format_hex_input(input: &str) -> String {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_format_hex() {
-        assert_eq!(format_hex(&[0x0A, 0xFF, 0x00]), "0A FF 00");
-        assert_eq!(format_hex(&[]), "");
-    }
+    // test_format_hex removed
 
     #[test]
     fn test_parse_hex_string() {
