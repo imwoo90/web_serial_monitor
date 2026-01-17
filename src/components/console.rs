@@ -211,12 +211,40 @@ pub fn Console() -> Element {
                             let show_timestamps = (state.show_timestamps)();
                             let show_highlights = (state.show_highlights)();
 
+                            // Filter Options - 값을 복사(Copy)하여 ReadGuard 의존성 제거
+                            let query = (state.filter_query)().clone(); // String Clone
+                            let match_case = (state.match_case)(); // Bool Copy
+                            let use_regex = (state.use_regex)(); // Bool Copy
+                            let invert_filter = (state.invert_filter)(); // Bool Copy
+
+                            // Pre-compile regex if enabled
+                            let regex_pattern = if use_regex && !query.is_empty() {
+                                regex::Regex::new(&query).ok()
+                            } else {
+                                None
+                            };
+
                             visible_logs
+
                                 .read()
                                 .iter()
-                                .filter(|text| {
-                                    let query = (state.filter_query)();
-                                    query.is_empty() || text.contains(&*query)
+                                .filter(move |text| {
+                                    if query.is_empty() {
+                                        return true;
+                                    }
+                                    let mut matched = if let Some(re) = &regex_pattern {
+                                        re.is_match(text)
+                                    } else {
+                                        if match_case {
+                                            text.contains(&query)
+                                        } else {
+                                            text.to_lowercase().contains(&query.to_lowercase())
+                                        }
+                                    };
+                                    if invert_filter {
+                                        matched = !matched;
+                                    }
+                                    matched
                                 })
                                 .map(move |text| {
                                     let segments = process_log_segments(
