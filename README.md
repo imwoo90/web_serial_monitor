@@ -3,7 +3,7 @@
 ![Rust](https://img.shields.io/badge/rust-%23000000.svg?style=for-the-badge&logo=rust&logoColor=white)
 ![Dioxus](https://img.shields.io/badge/Dioxus-0.6-blue?style=for-the-badge)
 ![WASM](https://img.shields.io/badge/WebAssembly-purple?style=for-the-badge)
-![License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)
+![License](https://img.shields.io/badge/license-Apache%202.0-blue?style=for-the-badge)
 ![Version](https://img.shields.io/badge/version-1.0.0-blue?style=for-the-badge)
 
 A high-performance, browser-based Serial Monitor that requires **no installation**. Built with **Rust (Dioxus)** and **WebAssembly**, it provides a desktop-class experience directly in your browser.
@@ -97,4 +97,4 @@ Open `http://localhost:8080` in a supported browser (Chrome, Edge, Opera).
 ---
 
 ## 📜 License
-This project is licensed under the **MIT License**.
+This project is licensed under the **Apache License 2.0**.
