@@ -7,7 +7,7 @@ pub fn Footer() -> Element {
             div { class: "flex items-center gap-2",
                 span { "Web Serial Monitor" }
                 span { class: "w-1 h-1 rounded-full bg-gray-700" }
-                span { "v0.1.0" }
+                span { "v1.0.0" }
             }
             div { class: "flex items-center gap-4",
                 a {
