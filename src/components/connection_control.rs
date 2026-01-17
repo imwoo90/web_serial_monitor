@@ -2,6 +2,7 @@ use crate::components::common::{CustomSelect, IconButton};
 use crate::components::console::types::WorkerMsg;
 use crate::serial;
 use crate::state::{AppState, SerialPortWrapper};
+use crate::utils::send_chunk_to_worker;
 use dioxus::prelude::*;
 
 #[component]
@@ -70,17 +71,13 @@ pub fn ConnectionControl() -> Element {
                         // Clear logs if starting
                         if let Some(w) = state.log_worker.peek().as_ref() {
                             let _ = w
-
-                                // Check if simulation was stopped
-
                                 .post_message(
-
                                     &serde_wasm_bindgen::to_value(&WorkerMsg::Clear).unwrap(),
                                 );
                         }
                         let worker_sig = state.log_worker;
                         let sim_sig = state.is_simulating;
-                        let hex_sig = state.is_hex_view; // Capture hex signal
+                        let hex_sig = state.is_hex_view;
 
                         spawn(async move {
                             loop {
@@ -109,26 +106,9 @@ pub fn ConnectionControl() -> Element {
                                         )
                                     };
 
-                                    // Convert to Uint8Array for Transferable
-                                    let bytes = content.as_bytes();
-                                    let uint8_array = js_sys::Uint8Array::from(bytes);
-                                    let is_hex = hex_sig(); // Read current hex state
-
-                                    // Create Message Object: { type: "APPEND_CHUNK", data: { chunk: Uint8Array, is_hex: bool } }
-                                    let msg = js_sys::Object::new();
-                                    let _ = js_sys::Reflect::set(&msg, &"type".into(), &"APPEND_CHUNK".into());
-
-                                    let payload = js_sys::Object::new();
-                                    let _ = js_sys::Reflect::set(&payload, &"chunk".into(), &uint8_array);
-                                    let _ = js_sys::Reflect::set(&payload, &"is_hex".into(), &is_hex.into());
-                                    let _ = js_sys::Reflect::set(&msg, &"data".into(), &payload);
-
-                                    // Create Transfer List
-                                    let transfer = js_sys::Array::new();
-                                    transfer.push(&uint8_array.buffer()); // Transfer ownership of buffer
-
-                                    // Post Message with Transfer
-                                    let _ = w.post_message_with_transfer(&msg, &transfer);
+                                    // Worker now handles formatting. Just send raw bytes.
+                                    let is_hex = hex_sig();
+                                    send_chunk_to_worker(w, content.as_bytes(), is_hex);
                                 }
                                 gloo_timers::future::TimeoutFuture::new(1).await;
                             }
@@ -162,7 +142,6 @@ pub fn ConnectionControl() -> Element {
                                 let stop_bits = if (state.stop_bits)() == "2" { 2 } else { 1 };
 
                                 if serial::open_port(
-
                                         &port,
                                         baud,
                                         data_bits,
@@ -176,7 +155,6 @@ pub fn ConnectionControl() -> Element {
                                     // Clear logs before connecting
                                     if let Some(w) = state.log_worker.peek().as_ref() {
                                         let _ = w
-
                                             .post_message(
                                                 &serde_wasm_bindgen::to_value(&WorkerMsg::Clear).unwrap(),
                                             );
@@ -184,34 +162,14 @@ pub fn ConnectionControl() -> Element {
                                     state.port.set(Some(SerialPortWrapper(port.clone())));
                                     state.is_connected.set(true);
                                     state.success("Connected");
-                                    // No LineParser needed here anymore. Worker does the parsing.
+
                                     serial::read_loop(
                                             port,
                                             move |data| {
                                                 // data is Vec<u8>
-                                                // Hex view logic handled by worker? Or still here?
-                                                // User wants Transferable. Simpler to move EVERYTHING to worker.
-                                                // But let's stick to raw bytes relay.
-
                                                 if let Some(w) = state.log_worker.peek().as_ref() {
-                                                    // Convert to Uint8Array
-                                                    let uint8_array = js_sys::Uint8Array::from(data.as_slice());
                                                     let is_hex = (state.is_hex_view)();
-
-                                                    // Create Message
-                                                    let msg = js_sys::Object::new();
-                                                    let _ = js_sys::Reflect::set(&msg, &"type".into(), &"APPEND_CHUNK".into());
-
-                                                    let payload = js_sys::Object::new();
-                                                    let _ = js_sys::Reflect::set(&payload, &"chunk".into(), &uint8_array);
-                                                    let _ = js_sys::Reflect::set(&payload, &"is_hex".into(), &is_hex.into());
-                                                    let _ = js_sys::Reflect::set(&msg, &"data".into(), &payload);
-
-                                                    // Transfer
-                                                    let transfer = js_sys::Array::new();
-                                                    transfer.push(&uint8_array.buffer());
-
-                                                    let _ = w.post_message_with_transfer(&msg, &transfer);
+                                                    send_chunk_to_worker(w, &data, is_hex);
                                                 }
                                             },
                                             move |_| {

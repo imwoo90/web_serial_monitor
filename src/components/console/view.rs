@@ -1,14 +1,14 @@
 use crate::state::AppState;
-use crate::utils::{calculate_start_index, calculate_window_size};
+use crate::utils::calculate_window_size;
 use dioxus::prelude::*;
 use std::rc::Rc;
 
 use super::layout_utils::{
-    use_auto_scroller, use_window_resize, ConsoleHeader, ResumeScrollButton,
+    calculate_scroll_state, use_auto_scroller, use_window_resize, ConsoleHeader, ResumeScrollButton,
 };
 use super::log_line::LogLine;
 use super::types::{WorkerMsg, BOTTOM_BUFFER_EXTRA, LINE_HEIGHT, TOP_BUFFER};
-use super::worker::{use_data_request, use_log_worker}; // Only if needed locally, but log_line uses it. Wait, LogLine calls it. So View doesn't need to call it directly.
+use super::worker::{use_data_request, use_log_worker};
 
 #[component]
 pub fn Console() -> Element {
@@ -51,25 +51,6 @@ pub fn Console() -> Element {
         spawn(async move {
             // Wait 300ms for debounce
             gloo_timers::future::TimeoutFuture::new(300).await;
-
-            // Check if signals are still same?
-            // Dioxus effects re-run on signal change, cleaning up previous one?
-            // Actually, in Dioxus 0.5/0.6 signals in effect dependency create subscription.
-            // If we spawn inside effect, it runs. But we need cancellation or verify value is latest.
-            // A better pattern for debounce in Dioxus:
-            // But since this is a one-shot, let's just send the message.
-            // Worker handles 'SessionId' so rapid messages are fine,
-            // but we want to avoid spamming the worker.
-
-            // However, inside this spawned future, we can't easily check if "latest" query matches.
-            // But we CAN check current signal value compared to captured value.
-            // If they differ, it means a newer effect ran (or signal changed).
-
-            // Actually, best debounce is just let the Worker handle rapid session updates (AbortController style).
-            // But sending message is cheap. Scanning is expensive.
-            // The worker's `searchSessionId` logic ALREADY handles logic cancellation!
-            // So we don't strictly need a complex debounce here IF we trust the worker to abort quickly.
-            // But let's add a small delay anyway to group keystrokes.
 
             if let Some(w) = worker_sig.peek().as_ref() {
                 let msg = WorkerMsg::SearchLogs {
@@ -128,34 +109,20 @@ pub fn Console() -> Element {
                         spawn(async move {
                             if let Some(handle) = handle {
                                 if let Ok(offset) = handle.get_scroll_offset().await {
-                                    // 1. Calculate Virtual Scroll Index
-                                    let new_index = calculate_start_index(
+                                    // Use helper function for calculation
+                                    let (new_index, is_at_bottom) = calculate_scroll_state(
                                         offset.y,
-                                        LINE_HEIGHT,
-                                        TOP_BUFFER,
+                                        console_height(),
+                                        total_lines(),
                                     );
+
                                     if start_index() != new_index {
                                         start_index.set(new_index);
                                     }
 
-                                    // 2. Autoscroll Detection (Math-based)
-                                    // Sentinel visibility is flaky during layout shifts (Hex toggle).
-                                    // Instead, check if we are near the bottom.
-                                    let scroll_top = offset.y;
-                                    let viewport_height = console_height();
-                                    let content_height = (total_lines() as f64) * LINE_HEIGHT;
-
-                                    // Allow small buffer (e.g. 50px)
-                                    let is_at_bottom = scroll_top + viewport_height >= content_height - 50.0;
-
                                     // Only update if changed
                                     if (state.autoscroll)() != is_at_bottom {
-                                        // If content is shorter than viewport, always autoscroll
-                                        if content_height <= viewport_height {
-                                            state.autoscroll.set(true);
-                                        } else {
-                                            state.autoscroll.set(is_at_bottom);
-                                        }
+                                        state.autoscroll.set(is_at_bottom);
                                     }
                                 }
                             }

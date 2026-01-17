@@ -59,6 +59,32 @@ pub fn use_auto_scroller(
     });
 }
 
+/// Helper to calculate new scroll state (start_index and autoscroll)
+/// Returns (new_start_index, should_autoscroll)
+pub fn calculate_scroll_state(
+    offset_y: f64,
+    viewport_height: f64,
+    total_lines: usize,
+) -> (usize, bool) {
+    use super::types::{LINE_HEIGHT, TOP_BUFFER};
+    use crate::utils::calculate_start_index;
+
+    // 1. Calculate Virtual Scroll Index
+    let new_index = calculate_start_index(offset_y, LINE_HEIGHT, TOP_BUFFER);
+
+    // 2. Autoscroll Detection (Math-based)
+    let content_height = (total_lines as f64) * LINE_HEIGHT;
+
+    // Allow small buffer (e.g. 50px)
+    let is_at_bottom = if content_height <= viewport_height {
+        true
+    } else {
+        offset_y + viewport_height >= content_height - 50.0
+    };
+
+    (new_index, is_at_bottom)
+}
+
 #[component]
 pub fn ConsoleHeader(
     autoscroll: bool,

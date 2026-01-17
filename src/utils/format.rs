@@ -1,6 +1,7 @@
 // function format_hex removed
 
 pub fn parse_hex_string(input: &str) -> Result<Vec<u8>, String> {
+    // ... same as before
     // Remove allowed separators (space, colon, dash) and 0x prefix
     let clean = input
         .replace(" ", "")
@@ -8,9 +9,6 @@ pub fn parse_hex_string(input: &str) -> Result<Vec<u8>, String> {
         .replace("-", "")
         .replace("0x", "");
 
-    // Check length (must be even for bytes) -> actually relaxed?
-    // User might type "A" -> "0A"?
-    // If strict:
     if clean.len() % 2 != 0 {
         return Err("Hex string must have an even number of characters".to_string());
     }
@@ -35,6 +33,24 @@ pub fn format_hex_input(input: &str) -> String {
         .map(|chunk| std::str::from_utf8(chunk).unwrap_or(""))
         .collect::<Vec<&str>>()
         .join(" ")
+}
+
+/// Helper to send raw byte chunk to worker using Zero-Copy transfer
+pub fn send_chunk_to_worker(worker: &web_sys::Worker, data: &[u8], is_hex: bool) {
+    let uint8_array = js_sys::Uint8Array::from(data);
+
+    let msg = js_sys::Object::new();
+    let _ = js_sys::Reflect::set(&msg, &"type".into(), &"APPEND_CHUNK".into());
+
+    let payload = js_sys::Object::new();
+    let _ = js_sys::Reflect::set(&payload, &"chunk".into(), &uint8_array);
+    let _ = js_sys::Reflect::set(&payload, &"is_hex".into(), &is_hex.into());
+    let _ = js_sys::Reflect::set(&msg, &"data".into(), &payload);
+
+    let transfer = js_sys::Array::new();
+    transfer.push(&uint8_array.buffer());
+
+    let _ = worker.post_message_with_transfer(&msg, &transfer);
 }
 
 #[cfg(test)]
