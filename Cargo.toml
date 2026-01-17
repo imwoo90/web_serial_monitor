@@ -13,12 +13,25 @@ gloo-timers = { version = "0.3.0", features = ["futures"] }
 js-sys = "0.3.85"
 regex = "1.12.2"
 serde = { version = "1.0.228", features = ["derive"] }
-serde-json-wasm = "1.0.1"
 serde-wasm-bindgen = "0.6.5"
 serde_json = "1.0"
 wasm-bindgen = "0.2.108"
 wasm-bindgen-futures = "0.4.58"
-web-sys = { version = "0.3.85", features = ["Window", "Document", "HtmlAnchorElement", "Node", "Worker", "MessageEvent", "Element", "HtmlElement", "ScrollToOptions", "Navigator", "Serial", "SerialPort", "SerialOptions", "ReadableStream", "WritableStream", "ReadableStreamDefaultReader", "WritableStreamDefaultWriter", "Storage"] }
+web-sys = { version = "0.3.85", features = [
+    "Window",
+    "Worker",
+    "MessageEvent",
+    "Navigator",
+    "Serial",
+    "SerialPort",
+    "SerialOptions",
+    "ReadableStream",
+    "WritableStream",
+    "ReadableStreamDefaultReader",
+    "WritableStreamDefaultWriter",
+    "Storage",
+    "console",
+] }
 
 [features]
 default = ["web"]

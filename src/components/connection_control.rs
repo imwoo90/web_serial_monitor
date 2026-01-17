@@ -20,7 +20,6 @@ pub fn ConnectionControl() -> Element {
     rsx! {
         div { class: "flex items-center gap-3 h-full",
             // Port Info
-            // Port Info
             div { class: "flex items-center gap-2 px-3 py-1.5 bg-[#16181a] rounded-lg border border-[#2a2e33] h-9",
                 if (state.is_connected)() {
                     span { class: "material-symbols-outlined text-emerald-500 text-[18px]",
@@ -214,7 +213,7 @@ pub fn ConnectionControl() -> Element {
                             disabled: (state.is_connected)(),
                         }
                     }
-                
+
                 }
             }
         }
