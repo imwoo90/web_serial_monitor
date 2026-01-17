@@ -38,13 +38,22 @@ pub fn use_window_resize(
 pub fn use_auto_scroller(
     autoscroll: Signal<bool>,
     total_lines: Signal<usize>,
-    sentinel: Signal<Option<Rc<MountedData>>>,
+    _sentinel: Signal<Option<Rc<MountedData>>>, // Sentinel no longer needed
 ) {
     use_effect(move || {
-        total_lines(); // React to changes in total line count
+        total_lines(); // React to changes
         if (autoscroll)() {
-            if let Some(h) = sentinel.peek().as_ref() {
-                let _ = h.scroll_to(ScrollBehavior::Instant);
+            // Use plain JS to set scrollTop ONLY, preserving scrollLeft.
+            // Dioxus visible/scrollTo APIs often mess with X-axis.
+            // Element ID is "console-output"
+            if let Some(window) = web_sys::window() {
+                if let Some(document) = window.document() {
+                    if let Some(el) = document.get_element_by_id("console-output") {
+                        // scrollTop = scrollHeight
+                        let scroll_height = el.scroll_height();
+                        el.set_scroll_top(scroll_height);
+                    }
+                }
             }
         }
     });

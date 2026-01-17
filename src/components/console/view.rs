@@ -111,6 +111,7 @@ pub fn Console() -> Element {
 
                 div {
                     class: "flex-1 overflow-y-auto font-mono text-xs md:text-sm leading-[20px] scrollbar-custom relative",
+                    style: "overflow-anchor: none;", // Prevent scroll anchoring interference
                     id: "console-output",
                     onmounted: move |evt| {
                         let handle = evt.data();
@@ -163,7 +164,7 @@ pub fn Console() -> Element {
 
                     // Virtual Scroll Spacer & Content
                     div { style: "height: {total_height}px; width: 100%; position: absolute; top: 0; left: 0; pointer-events: none;" }
-                    div { style: "position: absolute; top: 0; left: 0; right: 0; transform: translateY({offset_top}px); padding: 0.5rem 1rem 20px 1rem; pointer-events: auto;",
+                    div { style: "position: absolute; top: 0; left: 0; right: 0; transform: translateY({offset_top}px); padding: 0.5rem 1rem 20px 1rem; pointer-events: auto; min-width: 100%; width: max-content;",
                         {
                             let highlights = (state.highlights)().clone();
                             let show_timestamps = (state.show_timestamps)();
