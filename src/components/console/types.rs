@@ -26,6 +26,8 @@ pub enum WorkerMsg {
     ExportLogs { include_timestamp: bool },
     #[serde(rename = "EXPORT_READY")]
     ExportReady(String),
+    #[serde(rename = "CLEAR")]
+    Clear,
 }
 
 pub const LINE_HEIGHT: f64 = 20.0;

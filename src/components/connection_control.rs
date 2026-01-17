@@ -90,6 +90,11 @@ pub fn ConnectionControl() -> Element {
                                     .await
                                     .is_ok()
                                 {
+                                    // Clear logs before connecting
+                                    if let Some(w) = state.log_worker.peek().as_ref() {
+                                        let _ = w.post_message(&serde_wasm_bindgen::to_value(&WorkerMsg::Clear).unwrap());
+                                    }
+
                                     state.port.set(Some(SerialPortWrapper(port.clone())));
                                     state.is_connected.set(true);
                                     state.success("Connected");

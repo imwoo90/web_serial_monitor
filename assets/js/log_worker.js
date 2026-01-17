@@ -8,8 +8,18 @@ async function initOPFS() {
     try {
         const root = await navigator.storage.getDirectory();
 
-        // Use a fixed filename or try to close it if already open, or use a different name.
-        // Here, we safely use a new name every time (temporary log nature).
+        // Cleanup: remove old session files to prevent storage bloat
+        for await (const name of root.keys()) {
+            if (name.startsWith('session_logs_')) {
+                try {
+                    await root.removeEntry(name);
+                } catch (e) {
+                    // Ignore if file is in use by another tab
+                }
+            }
+        }
+
+        // Use a unique name for the current session
         const fileName = `session_logs_${Date.now()}.txt`;
         fileHandle = await root.getFileHandle(fileName, { create: true });
         syncAccessHandle = await fileHandle.createSyncAccessHandle();
@@ -158,6 +168,20 @@ self.onmessage = async (e) => {
 
         } catch (err) {
             console.error("[LogWorker] Stream Export Error:", err);
+        }
+    }
+
+    if (type === 'CLEAR') {
+        if (!syncAccessHandle) return;
+        try {
+            syncAccessHandle.truncate(0);
+            syncAccessHandle.flush();
+            lineCount = 0;
+            lineOffsets = [0];
+            self.postMessage({ type: 'TOTAL_LINES', data: 0 });
+            console.log("[LogWorker] Storage Cleared");
+        } catch (err) {
+            console.error("[LogWorker] Clear Error:", err);
         }
     }
 };

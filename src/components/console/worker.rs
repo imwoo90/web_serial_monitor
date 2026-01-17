@@ -29,10 +29,13 @@ pub fn use_log_worker(
 
                 if let Ok(msg) = serde_wasm_bindgen::from_value::<WorkerMsg>(data) {
                     match msg {
-                        WorkerMsg::TotalLines(count) => total_lines.set(count),
+                        WorkerMsg::TotalLines(count) => {
+                            total_lines.set(count);
+                            if count == 0 {
+                                visible_logs.set(Vec::new());
+                            }
+                        }
                         WorkerMsg::LogWindow { lines, .. } => visible_logs.set(lines),
-                        // ExportReady is deprecated but kept for fallback if needed
-                        WorkerMsg::ExportReady(_url) => { /* remove logic or keep fallback */ }
                         _ => {}
                     }
                 }
