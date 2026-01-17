@@ -1,4 +1,5 @@
 use crate::state::AppState;
+use crate::utils::{calculate_start_index, calculate_window_size, LogFilter};
 use dioxus::prelude::*;
 use std::rc::Rc;
 
@@ -20,8 +21,11 @@ pub fn Console() -> Element {
     let mut start_index = use_signal(|| 0usize);
     let mut console_height = use_signal(|| 600.0);
 
-    let window_size =
-        ((console_height() / LINE_HEIGHT).ceil() as usize) + TOP_BUFFER + BOTTOM_BUFFER_EXTRA;
+    let window_size = calculate_window_size(
+        console_height(),
+        LINE_HEIGHT,
+        TOP_BUFFER + BOTTOM_BUFFER_EXTRA,
+    );
 
     let mut console_handle = use_signal(|| None::<Rc<MountedData>>);
     let mut sentinel_handle = use_signal(|| None::<Rc<MountedData>>);
@@ -36,16 +40,12 @@ pub fn Console() -> Element {
     let offset_top = (start_index() as f64) * LINE_HEIGHT;
 
     // Filter Options Snapshot
-    let query = (state.filter_query)().clone();
-    let match_case = (state.match_case)();
-    let use_regex = (state.use_regex)();
-    let invert_filter = (state.invert_filter)();
-
-    let regex_pattern = if use_regex && !query.is_empty() {
-        regex::Regex::new(&query).ok()
-    } else {
-        None
-    };
+    let filter = LogFilter::new(
+        (state.filter_query)(),
+        (state.match_case)(),
+        (state.use_regex)(),
+        (state.invert_filter)(),
+    );
 
     let onexport = move |_evt: MouseEvent| {
         if let Some(w) = state.log_worker.peek().as_ref() {
@@ -81,8 +81,7 @@ pub fn Console() -> Element {
                         spawn(async move {
                             if let Some(handle) = handle {
                                 if let Ok(offset) = handle.get_scroll_offset().await {
-                                    let raw_index = (offset.y / LINE_HEIGHT).floor() as usize;
-                                    let new_index = raw_index.saturating_sub(TOP_BUFFER);
+                                    let new_index = calculate_start_index(offset.y, LINE_HEIGHT, TOP_BUFFER);
                                     if start_index() != new_index {
                                         start_index.set(new_index);
                                     }
@@ -102,18 +101,7 @@ pub fn Console() -> Element {
 
                             visible_logs.read().iter()
                                 .enumerate()
-                                .filter(move |(_, text)| {
-                                    if query.is_empty() { return true; }
-                                    let mut matched = if let Some(re) = &regex_pattern {
-                                        re.is_match(text)
-                                    } else if match_case {
-                                        text.contains(&query)
-                                    } else {
-                                        text.to_lowercase().contains(&query.to_lowercase())
-                                    };
-                                    if invert_filter { matched = !matched; }
-                                    matched
-                                })
+                                .filter(move |(_, text)| filter.matches(text))
                                 .map(move |(idx, text)| {
                                     rsx! {
                                         LogLine {

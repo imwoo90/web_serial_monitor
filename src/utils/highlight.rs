@@ -8,8 +8,12 @@ pub fn process_log_segments(
     show_highlights: bool,
 ) -> Vec<(String, Option<String>)> {
     // 1. Timestamp Parsing
-    let content = if !show_timestamps && text.len() > 11 && text.starts_with('[') {
-        &text[11..]
+    let content = if !show_timestamps && text.starts_with('[') {
+        if let Some(end_pos) = text.find("] ") {
+            &text[end_pos + 2..]
+        } else {
+            text
+        }
     } else {
         text
     };
@@ -24,7 +28,7 @@ pub fn process_log_segments(
             }
 
             let mut next_segments = Vec::new();
-            let mut found_for_keyword = false; // Reset for each highlight keyword
+            let mut found_for_keyword = false;
 
             for (seg_text, color) in segments {
                 // 이미 색칠된 세그먼트는 패스
@@ -33,21 +37,20 @@ pub fn process_log_segments(
                     continue;
                 }
 
-                // 키워드 검색 (라인 당 1회 제한)
+                // 키워드 검색 (라인 당 현재는 1회만 처리됨 - split_once)
                 if !found_for_keyword && seg_text.contains(&h.text) {
                     if let Some((prefix, suffix)) = seg_text.split_once(&h.text) {
                         if !prefix.is_empty() {
                             next_segments.push((prefix.to_string(), None));
                         }
-                        // Highlighted Keyword
+
                         next_segments.push((h.text.clone(), Some(h.color.to_string())));
 
                         if !suffix.is_empty() {
                             next_segments.push((suffix.to_string(), None));
                         }
-                        found_for_keyword = true; // Mark as found for this keyword in this line
+                        found_for_keyword = true;
                     } else {
-                        // This case should ideally not be reached if seg_text.contains(&h.text) is true
                         next_segments.push((seg_text, None));
                     }
                 } else {
@@ -59,4 +62,45 @@ pub fn process_log_segments(
     }
 
     segments
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::state::Highlight;
+
+    #[test]
+    fn test_highlight_processing() {
+        let highlights = vec![
+            Highlight {
+                id: 1,
+                text: "Error".to_string(),
+                color: "red",
+            },
+            Highlight {
+                id: 2,
+                text: "Warning".to_string(),
+                color: "yellow",
+            },
+        ];
+
+        // 1. No highlights
+        let res = process_log_segments("Normal text", &highlights, true, false);
+        assert_eq!(res.len(), 1);
+        assert_eq!(res[0].0, "Normal text");
+        assert!(res[0].1.is_none());
+
+        // 2. Single match
+        let res = process_log_segments("Critical Error found", &highlights, true, true);
+        assert_eq!(res.len(), 3);
+        assert_eq!(res[0].0, "Critical ");
+        assert_eq!(res[1].0, "Error");
+        assert_eq!(res[1].1.as_deref(), Some("red"));
+        assert_eq!(res[2].0, " found");
+
+        // 3. Timestamp removal (Variable format)
+        let log = "[12:00:00.000] Message";
+        let res = process_log_segments(log, &highlights, false, true);
+        assert_eq!(res[0].0, "Message");
+    }
 }

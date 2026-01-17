@@ -24,14 +24,12 @@ impl LineParser {
 
         match self.mode {
             LineEnding::None => {
-                // Raw mode: Flush everything immediately
                 if !self.buffer.is_empty() {
                     lines.push(self.buffer.clone());
                     self.buffer.clear();
                 }
             }
             LineEnding::NL => {
-                // Split by '\n'
                 while let Some(pos) = self.buffer.find('\n') {
                     let mut line: String = self.buffer.drain(..=pos).collect();
                     if line.ends_with('\n') {
@@ -39,12 +37,11 @@ impl LineParser {
                     }
                     if line.ends_with('\r') {
                         line.pop();
-                    } // Handle potential \r before \n
+                    }
                     lines.push(line);
                 }
             }
             LineEnding::CR => {
-                // Split by '\r'
                 while let Some(pos) = self.buffer.find('\r') {
                     let mut line: String = self.buffer.drain(..=pos).collect();
                     if line.ends_with('\r') {
@@ -54,10 +51,7 @@ impl LineParser {
                 }
             }
             LineEnding::NLCR => {
-                // Split by "\r\n"
                 while let Some(pos) = self.buffer.find("\r\n") {
-                    // pos is start of \r\n. Length is 2.
-                    // drain range ..=(pos+1) covers \r(pos) and \n(pos+1)
                     let mut line: String = self.buffer.drain(..=pos + 1).collect();
                     if line.ends_with('\n') {
                         line.pop();

@@ -2,7 +2,7 @@ pub mod filter_bar;
 pub mod layout_utils;
 pub mod log_line;
 pub mod types;
-pub mod utils;
+
 pub mod view;
 pub mod worker;
 

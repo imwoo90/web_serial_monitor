@@ -2,7 +2,8 @@ use crate::components::common::{CustomSelect, IconButton};
 use crate::components::console::types::WorkerMsg;
 use crate::serial;
 use crate::state::{AppState, SerialPortWrapper};
-use crate::utils::LineParser;
+use crate::utils::{format_hex, LineParser};
+use chrono::Local;
 use dioxus::prelude::*;
 
 #[component]
@@ -87,13 +88,12 @@ pub fn ConnectionControl() -> Element {
 
                                     serial::read_loop(port, move |data| {
                                         if (state.is_hex_view)() {
-                                            let hex_string = data.iter()
-                                                .map(|b| format!("{:02X}", b))
-                                                .collect::<Vec<String>>()
-                                                .join(" ");
+                                            let hex_string = format_hex(&data);
 
                                             if let Some(w) = state.log_worker.peek().as_ref() {
-                                                let msg = WorkerMsg::AppendLog(hex_string);
+                                                let timestamp = Local::now().format("[%H:%M:%S%.3f] ").to_string();
+                                                let log_entry = format!("{}{}", timestamp, hex_string);
+                                                let msg = WorkerMsg::AppendLog(log_entry);
                                                 let _ = w.post_message(&serde_wasm_bindgen::to_value(&msg).unwrap());
                                             }
                                         } else {
@@ -105,7 +105,9 @@ pub fn ConnectionControl() -> Element {
 
                                             if let Some(w) = state.log_worker.peek().as_ref() {
                                                 for line in lines {
-                                                    let msg = WorkerMsg::AppendLog(line);
+                                                    let timestamp = Local::now().format("[%H:%M:%S%.3f] ").to_string();
+                                                    let log_entry = format!("{}{}", timestamp, line);
+                                                    let msg = WorkerMsg::AppendLog(log_entry);
                                                     let _ = w.post_message(&serde_wasm_bindgen::to_value(&msg).unwrap());
                                                 }
                                             }

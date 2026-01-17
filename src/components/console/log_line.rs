@@ -1,6 +1,6 @@
 use super::types::LINE_HEIGHT;
-use super::utils::process_log_segments;
 use crate::state::Highlight;
+use crate::utils::process_log_segments;
 use dioxus::prelude::*;
 
 #[component]
