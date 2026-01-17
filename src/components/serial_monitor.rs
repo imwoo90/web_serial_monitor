@@ -1,11 +1,9 @@
 use crate::state::{AppState, LineEnding};
 use dioxus::prelude::*;
 
-use super::console::Console;
-use super::filter_section::FilterSection;
+use super::console::{Console, FilterBar, InputBar};
 use super::footer::Footer;
 use super::header::Header;
-use super::settings_panel::SettingsPanel;
 
 #[component]
 pub fn SerialMonitor() -> Element {
@@ -51,10 +49,11 @@ pub fn SerialMonitor() -> Element {
 
             div { class: "relative shrink-0 z-30",
                 Header {}
-                SettingsPanel {}
+
             }
-            FilterSection {}
+            FilterBar {}
             Console {}
+            InputBar {}
             Footer {}
         }
     }

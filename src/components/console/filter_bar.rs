@@ -3,13 +3,13 @@ use crate::state::{AppState, Highlight, HIGHLIGHT_COLORS};
 use dioxus::prelude::*;
 
 #[component]
-pub fn FilterSection() -> Element {
+pub fn FilterBar() -> Element {
     let state = use_context::<AppState>();
     let show_highlights = (state.show_highlights)();
 
     rsx! {
         div {
-            class: "shrink-0 px-5 py-3 z-10 flex flex-col gap-3 filter-section",
+            class: "shrink-0 px-5 py-3 z-10 flex flex-col gap-3 filter-section relative",
             div { class: "flex gap-2 w-full items-stretch",
                 FilterInput {}
                 IconButton {
@@ -26,6 +26,42 @@ pub fn FilterSection() -> Element {
             }
             HighlightPanel { visible: show_highlights }
             DisplayOptions {}
+        }
+    }
+}
+
+// ... FilterInput ...
+
+#[component]
+fn HighlightPanel(visible: bool) -> Element {
+    let state = use_context::<AppState>();
+    let highlights = (state.highlights)();
+
+    rsx! {
+        div {
+            class: "absolute top-full left-5 right-5 z-50 bg-surface rounded-xl border border-white/10 shadow-2xl transition-all duration-300 origin-top",
+            class: if visible { "opacity-100 visible scale-100 translate-y-2 p-4" } else { "opacity-0 invisible scale-95 translate-y-0 p-0 overflow-hidden h-0" },
+            div { class: "flex flex-col gap-3",
+                PanelHeader {
+                    title: "Active Highlights",
+                    subtitle: Some(format!("{} active rules", highlights.len()))
+                }
+                div { class: "flex flex-wrap gap-2",
+                    for h in highlights {
+                        HighlightTag {
+                            color: h.color,
+                            label: h.text.clone(),
+                            onremove: move |_| {
+                                let mut state = use_context::<AppState>();
+                                let mut list = state.highlights.read().clone();
+                                list.retain(|item| item.id != h.id);
+                                state.highlights.set(list);
+                            }
+                        }
+                    }
+                }
+                HighlightInput {}
+            }
         }
     }
 }
@@ -102,40 +138,6 @@ fn FilterOptionButton(
             "aria-label": "{title}",
             onclick: move |evt| onclick.call(evt),
             span { class: "text-[11px] font-bold font-mono", "{label}" }
-        }
-    }
-}
-
-#[component]
-fn HighlightPanel(visible: bool) -> Element {
-    let state = use_context::<AppState>();
-    let highlights = (state.highlights)();
-
-    rsx! {
-        div {
-            class: "highlight-panel overflow-hidden transition-all duration-300 bg-surface rounded-xl border border-white/10 shadow-lg",
-            class: if visible { "max-h-[400px] opacity-100 visible p-4 mt-2" } else { "max-h-0 opacity-0 invisible" },
-            div { class: "flex flex-col gap-3",
-                PanelHeader {
-                    title: "Active Highlights",
-                    subtitle: Some(format!("{} active rules", highlights.len()))
-                }
-                div { class: "flex flex-wrap gap-2",
-                    for h in highlights {
-                        HighlightTag {
-                            color: h.color,
-                            label: h.text.clone(),
-                            onremove: move |_| {
-                                let mut state = use_context::<AppState>();
-                                let mut list = state.highlights.read().clone();
-                                list.retain(|item| item.id != h.id);
-                                state.highlights.set(list);
-                            }
-                        }
-                    }
-                }
-                HighlightInput {}
-            }
         }
     }
 }
