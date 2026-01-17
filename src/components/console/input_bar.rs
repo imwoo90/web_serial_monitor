@@ -1,6 +1,7 @@
 use crate::components::common::ToggleSwitch;
 use crate::serial;
 use crate::state::{AppState, LineEnding};
+use crate::utils::CommandHistory;
 use dioxus::prelude::*;
 
 #[component]
@@ -37,6 +38,8 @@ fn LineEndSelector(
 pub fn InputBar() -> Element {
     let mut state = use_context::<AppState>();
     let mut input_value = use_signal(String::new);
+    let mut history = use_signal(|| CommandHistory::load());
+    let mut history_index = use_signal(|| None::<usize>);
 
     let rx_ending = (state.rx_line_ending)();
     let tx_ending = (state.line_ending)();
@@ -47,6 +50,9 @@ pub fn InputBar() -> Element {
             if text.is_empty() {
                 return;
             }
+
+            history.write().add(text.clone());
+            history_index.set(None);
 
             let mut data = text.clone().into_bytes();
             match (state.line_ending)() {
@@ -111,8 +117,41 @@ pub fn InputBar() -> Element {
                             value: "{input_value}",
                             oninput: move |evt| input_value.set(evt.value()),
                             onkeydown: move |evt| {
-                                if evt.key() == Key::Enter {
-                                    on_send();
+                                match evt.key() {
+                                    Key::Enter => on_send(),
+                                    Key::ArrowUp => {
+                                        evt.prevent_default();
+                                        let h = history.read();
+                                        let len = h.len();
+                                        if len > 0 {
+                                            let new_idx = match history_index() {
+                                                Some(i) => if i > 0 { i - 1 } else { 0 },
+                                                None => len - 1,
+                                            };
+                                            history_index.set(Some(new_idx));
+                                            if let Some(cmd) = h.get_at(new_idx) {
+                                                input_value.set(cmd.clone());
+                                            }
+                                        }
+                                    }
+                                    Key::ArrowDown => {
+                                        evt.prevent_default();
+                                        if let Some(i) = history_index() {
+                                            let h = history.read();
+                                            let len = h.len();
+                                            if i + 1 >= len {
+                                                history_index.set(None);
+                                                input_value.set(String::new());
+                                            } else {
+                                                let new_idx = i + 1;
+                                                history_index.set(Some(new_idx));
+                                                if let Some(cmd) = h.get_at(new_idx) {
+                                                    input_value.set(cmd.clone());
+                                                }
+                                            }
+                                        }
+                                    }
+                                    _ => {}
                                 }
                             }
                         }
