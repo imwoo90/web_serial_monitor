@@ -43,7 +43,7 @@ pub struct AppState {
     pub use_regex: Signal<bool>,
     pub invert_filter: Signal<bool>,
     // New Settings
-    pub baud_rate: Signal<&'static str>,
+    pub baud_rate: Signal<String>,
     pub data_bits: Signal<&'static str>,
     pub stop_bits: Signal<&'static str>,
     pub parity: Signal<&'static str>,

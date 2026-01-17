@@ -1,4 +1,4 @@
-use crate::components::common::{CustomSelect, IconButton};
+use crate::components::common::{CustomInputSelect, CustomSelect, IconButton};
 use crate::components::console::types::WorkerMsg;
 use crate::serial;
 use crate::state::{AppState, SerialPortWrapper};
@@ -35,8 +35,20 @@ pub fn ConnectionControl() -> Element {
 
             // Baud Rate
             div { class: "w-32",
-                CustomSelect {
-                    options: vec!["9600", "19200", "38400", "57600", "115200"],
+                CustomInputSelect {
+                    options: vec![
+                        "1200",
+                        "2400",
+                        "4800",
+                        "9600",
+                        "19200",
+                        "38400",
+                        "57600",
+                        "115200",
+                        "230400",
+                        "460800",
+                        "921600",
+                    ],
                     selected: state.baud_rate,
                     onchange: move |val| state.baud_rate.set(val),
                     class: "w-full",

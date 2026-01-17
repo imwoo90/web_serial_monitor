@@ -21,7 +21,7 @@ pub fn SerialMonitor() -> Element {
     let invert_filter = use_signal(|| false);
 
     // Serial settings state
-    let baud_rate = use_signal(|| "115200");
+    let baud_rate = use_signal(|| "115200".to_string());
     let data_bits = use_signal(|| "8");
     let stop_bits = use_signal(|| "1");
     let parity = use_signal(|| "None");
