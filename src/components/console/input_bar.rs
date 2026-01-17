@@ -1,3 +1,4 @@
+use crate::components::common::ToggleSwitch;
 use crate::serial;
 use crate::state::{AppState, LineEnding};
 use dioxus::prelude::*;
@@ -76,13 +77,21 @@ pub fn InputBar() -> Element {
             div { class: "absolute top-0 left-0 right-0 h-px bg-linear-to-r from-transparent via-primary/20 to-transparent" }
             div { class: "flex flex-col gap-3",
                 div { class: "flex items-center justify-between",
-                    // RX Controls
-                    LineEndSelector {
-                        label: "RX Parse",
-                        selected: rx_ending,
-                        onselect: move |val| state.rx_line_ending.set(val),
-                        active_class: "bg-emerald-500/20 text-emerald-500 border-emerald-500/20",
-                        is_rx: true,
+                    // RX Controls Group
+                    div { class: "flex items-center gap-4",
+                        LineEndSelector {
+                            label: "RX Parse",
+                            selected: rx_ending,
+                            onselect: move |val| state.rx_line_ending.set(val),
+                            active_class: "bg-emerald-500/20 text-emerald-500 border-emerald-500/20",
+                            is_rx: true,
+                        }
+                        div { class: "w-px h-6 bg-[#2a2e33]" }
+                        ToggleSwitch {
+                            label: "HEX VIEW",
+                            active: (state.is_hex_view)(),
+                            onclick: move |_| state.is_hex_view.set(!(state.is_hex_view)()),
+                        }
                     }
                     // TX Controls
                     LineEndSelector {

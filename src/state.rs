@@ -47,6 +47,7 @@ pub struct AppState {
     pub parity: Signal<&'static str>,
     pub flow_control: Signal<&'static str>,
     pub rx_line_ending: Signal<LineEnding>,
+    pub is_hex_view: Signal<bool>,
     // Serial State
     pub port: Signal<Option<SerialPortWrapper>>,
     pub is_connected: Signal<bool>,

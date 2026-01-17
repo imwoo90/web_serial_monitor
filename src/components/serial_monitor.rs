@@ -26,6 +26,7 @@ pub fn SerialMonitor() -> Element {
     let parity = use_signal(|| "None");
     let flow_control = use_signal(|| "None");
     let rx_line_ending = use_signal(|| LineEnding::NL);
+    let is_hex_view = use_signal(|| false);
     let port = use_signal(|| None);
     let is_connected = use_signal(|| false);
     let mut log_worker = use_signal(|| None::<web_sys::Worker>);
@@ -56,6 +57,7 @@ pub fn SerialMonitor() -> Element {
         parity,
         flow_control,
         rx_line_ending,
+        is_hex_view,
         port,
         is_connected,
         log_worker,

@@ -84,16 +84,28 @@ pub fn ConnectionControl() -> Element {
                                     let mut parser = LineParser::new();
 
                                     serial::read_loop(port, move |data| {
-                                        let mode = (state.rx_line_ending)();
-                                        parser.set_mode(mode);
+                                        if (state.is_hex_view)() {
+                                            let hex_string = data.iter()
+                                                .map(|b| format!("{:02X}", b))
+                                                .collect::<Vec<String>>()
+                                                .join(" ");
 
-                                        let chunk = String::from_utf8_lossy(&data);
-                                        let lines = parser.push(&chunk);
-
-                                        if let Some(w) = state.log_worker.peek().as_ref() {
-                                            for line in lines {
-                                                let msg = WorkerMsg::AppendLog(line);
+                                            if let Some(w) = state.log_worker.peek().as_ref() {
+                                                let msg = WorkerMsg::AppendLog(hex_string);
                                                 let _ = w.post_message(&serde_wasm_bindgen::to_value(&msg).unwrap());
+                                            }
+                                        } else {
+                                            let mode = (state.rx_line_ending)();
+                                            parser.set_mode(mode);
+
+                                            let chunk = String::from_utf8_lossy(&data);
+                                            let lines = parser.push(&chunk);
+
+                                            if let Some(w) = state.log_worker.peek().as_ref() {
+                                                for line in lines {
+                                                    let msg = WorkerMsg::AppendLog(line);
+                                                    let _ = w.post_message(&serde_wasm_bindgen::to_value(&msg).unwrap());
+                                                }
                                             }
                                         }
                                     }, move |_| {
