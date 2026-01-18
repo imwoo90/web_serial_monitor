@@ -53,14 +53,10 @@ pub async fn open_port(
 }
 
 pub async fn read_loop(
-    port: SerialPort,
+    reader: ReadableStreamDefaultReader,
     mut on_data: impl FnMut(Vec<u8>) + 'static,
     mut on_error: impl FnMut(String) + 'static,
 ) {
-    let readable = port.readable();
-    let reader = readable.get_reader();
-    let reader: ReadableStreamDefaultReader = reader.unchecked_into();
-
     loop {
         let promise = reader.read();
         match JsFuture::from(promise).await {
@@ -84,10 +80,16 @@ pub async fn read_loop(
             }
             Err(e) => {
                 on_error(format!("Read error: {:?}", e));
+                let _ = reader.release_lock();
                 break;
             }
         }
     }
+}
+
+pub async fn cancel_reader(reader: &ReadableStreamDefaultReader) -> Result<(), JsValue> {
+    let promise = reader.cancel();
+    JsFuture::from(promise).await.map(|_| ())
 }
 
 pub async fn send_data(port: &SerialPort, data: &[u8]) -> Result<(), JsValue> {

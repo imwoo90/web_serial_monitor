@@ -1,7 +1,7 @@
 use crate::components::common::{ToastMessage, ToastType};
 use dioxus::prelude::*;
 use gloo_timers::future::TimeoutFuture;
-use web_sys::{SerialPort, Worker};
+use web_sys::{ReadableStreamDefaultReader, SerialPort, Worker};
 
 #[derive(Clone, Debug)]
 pub struct SerialPortWrapper(pub SerialPort);
@@ -9,6 +9,16 @@ pub struct SerialPortWrapper(pub SerialPort);
 unsafe impl Send for SerialPortWrapper {}
 unsafe impl Sync for SerialPortWrapper {}
 impl PartialEq for SerialPortWrapper {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct ReaderWrapper(pub ReadableStreamDefaultReader);
+unsafe impl Send for ReaderWrapper {}
+unsafe impl Sync for ReaderWrapper {}
+impl PartialEq for ReaderWrapper {
     fn eq(&self, other: &Self) -> bool {
         self.0 == other.0
     }
@@ -52,6 +62,7 @@ pub struct AppState {
     pub is_hex_view: Signal<bool>,
     // Serial State
     pub port: Signal<Option<SerialPortWrapper>>,
+    pub reader: Signal<Option<ReaderWrapper>>,
     pub is_connected: Signal<bool>,
     pub is_simulating: Signal<bool>,
     pub log_worker: Signal<Option<Worker>>,
