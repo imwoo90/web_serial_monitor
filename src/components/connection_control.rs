@@ -4,6 +4,8 @@ use crate::serial;
 use crate::state::{AppState, SerialPortWrapper};
 use crate::utils::send_chunk_to_worker;
 use dioxus::prelude::*;
+use wasm_bindgen::JsCast;
+use web_sys::ReadableStreamDefaultReader;
 
 #[component]
 pub fn ConnectionControl() -> Element {
@@ -139,6 +141,13 @@ pub fn ConnectionControl() -> Element {
                 onclick: move |_| {
                     if (state.is_connected)() {
                         spawn(async move {
+                            // Cancel reader first
+                            if let Some(reader_wrapper) = (state.reader)() {
+                                let _ = serial::cancel_reader(&reader_wrapper.0).await;
+                                state.reader.set(None);
+                            }
+
+                            // Then close port
                             if let Some(wrapper) = (state.port)() {
                                 let _ = serial::close_port(&wrapper.0).await;
                                 state.port.set(None);
@@ -173,10 +182,17 @@ pub fn ConnectionControl() -> Element {
                                     }
                                     state.port.set(Some(SerialPortWrapper(port.clone())));
                                     state.is_connected.set(true);
+
+                                    // Create reader and store it
+                                    let readable = port.readable();
+                                    let reader = readable.get_reader();
+                                    let reader: ReadableStreamDefaultReader = reader.unchecked_into();
+                                    state.reader.set(Some(crate::state::ReaderWrapper(reader.clone())));
+
                                     state.success("Connected");
 
                                     serial::read_loop(
-                                            port,
+                                            reader,
                                             move |data| {
                                                 // data is Vec<u8>
                                                 if let Some(w) = state.log_worker.peek().as_ref() {
@@ -185,12 +201,57 @@ pub fn ConnectionControl() -> Element {
                                                 }
                                             },
                                             move |_| {
+                                                // If we manually disconnected, is_connected will be false by the time this runs (maybe?)
+                                                // But if we just cancelled the reader, this callback might run on error or not?
+                                                // The on_error callback is called if read() errors.
+                                                // If read() is cancelled, it resolves with done=true.
+                                                // My read_loop logic calls break on done, NOT on_error.
+                                                // So this callback is only called on actual errors.
                                                 state.is_connected.set(false);
                                                 state.port.set(None);
+                                                state.reader.set(None);
                                                 state.error("Connection Lost");
                                             },
                                         )
                                         .await;
+
+                                    // If we are here, loop finished.
+                                    if (state.is_connected)() {
+                                         // It means it wasn't a manual disconnect (which sets is_connected=false before cancelling reader).
+                                         // Wait, manual disconnect:
+                                         // 1. User clicks.
+                                         // 2. Spawn async task.
+                                         // 3. cancel_reader().
+                                         // 4. state.reader.set(None).
+                                         // 5. ... close port ...
+                                         // 6. state.is_connected.set(false).
+
+                                         // Meanwhile, read_loop breaks.
+                                         // It finishes.
+                                         // The "await" in this spawn block finishes.
+
+                                         // We need to avoid "Connection Closed" message if manual disconnect is in progress.
+                                         // But `is_connected` is still true until `close_port` finishes?
+                                         // No, `cancel_reader` finishes, then we set `is_connected=false`.
+
+                                         // Race condition:
+                                         // `read_loop` finishes when `cancel` resolves.
+                                         // The `spawn` block for `Connect` resumes after `await`.
+                                         // At this point, we are in the `Connect`'s async block.
+                                         // The `Disconnect` async block is running in parallel.
+
+                                         // If `Disconnect` hasn't reached `is_connected.set(false)` yet, we might show "Connection Closed".
+
+                                         // Solution: Check `state.reader`. If it's None, it implies we are disconnecting manually?
+                                         // We set `reader` to None in Disconnect handler.
+                                         // So:
+                                         if (state.reader)().is_some() {
+                                             state.is_connected.set(false);
+                                             state.port.set(None);
+                                             state.reader.set(None);
+                                             state.info("Connection Closed");
+                                         }
+                                    }
                                 } else {
                                     state.error("Failed to Open Port");
                                 }
