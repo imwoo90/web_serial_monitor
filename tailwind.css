@@ -9,7 +9,7 @@
   --color-surface: #121416;
 
   --font-display: "Space Grotesk", "sans-serif";
-  --font-mono: "Space Grotesk", "monospace";
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 
   --radius-default: 0.25rem;
   --radius-lg: 0.5rem;
