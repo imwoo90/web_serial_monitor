@@ -13,13 +13,29 @@ const notify = (count) => {
 const getFiles = async (root) => {
     const files = [];
     for await (const [n, h] of root.entries()) if (n.startsWith('logs_') && n.endsWith('.txt')) files.push([n, h]);
-    return files.sort((a, b) => parseInt(b[0].split('_')[1]) - parseInt(a[0].split('_')[1])); // Descending
+    return files.sort((a, b) => parseInt(b[0].split('_')[1]) - parseInt(a[0].split('_')[1]));
+};
+
+// Retry wrapper for OPFS exclusive locking
+const getLock = async (fileHandle) => {
+    for (let i = 0; i < 20; i++) {
+        try { return await fileHandle.createSyncAccessHandle(); }
+        catch (e) {
+            // Wait 100ms if locked
+            if (e.name === 'NoModificationAllowedError' || e.name === 'InvalidStateError') {
+                await new Promise(r => setTimeout(r, 100));
+                continue;
+            }
+            throw e;
+        }
+    }
+    throw new Error("Failed to acquire OPFS lock after retries");
 };
 
 const newSession = async (root, cleanup = false) => {
     if (cleanup && currentFile) try { await root.removeEntry(currentFile); } catch (e) { }
     currentFile = `logs_${Date.now()}.txt`;
-    const h = await (await root.getFileHandle(currentFile, { create: true })).createSyncAccessHandle();
+    const h = await getLock(await root.getFileHandle(currentFile, { create: true }));
     processor.set_sync_handle(h);
     processor.clear();
     return h;
@@ -31,17 +47,25 @@ const newSession = async (root, cleanup = false) => {
         processor = new LogProcessor();
         const root = await navigator.storage.getDirectory();
 
-        // Recover latest or start new
         const files = await getFiles(root);
         if (files.length > 0) {
             currentFile = files[0][0];
-            processor.set_sync_handle(await files[0][1].createSyncAccessHandle()); // Triggers rebuild
-            for (let i = 1; i < files.length; i++) try { await root.removeEntry(files[i][0]); } catch (e) { } // delete stale
+            try {
+                // Try to resume session
+                const h = await getLock(files[0][1]);
+                processor.set_sync_handle(h); // Rebuild indices
+            } catch (e) {
+                console.warn("Resume failed (lock?), starting new session", e);
+                await newSession(root); // Fallback if lock fails completely
+            }
+            // Cleanup stale
+            for (let i = 1; i < files.length; i++) try { await root.removeEntry(files[i][0]); } catch (e) { }
         } else {
             await newSession(root);
         }
 
         self.postMessage({ type: 'INITIALIZED' });
+        // Only send total lines if we successfully processed existing logs
         if (processor.get_line_count() > 0) self.postMessage({ type: 'TOTAL_LINES', data: processor.get_line_count() });
 
         self.onmessage = async ({ data: { type, data } }) => {
