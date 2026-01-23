@@ -66,20 +66,21 @@ pub fn calculate_scroll_state(
     viewport_height: f64,
     total_lines: usize,
 ) -> (usize, bool) {
-    use super::types::{LINE_HEIGHT, TOP_BUFFER};
+    use super::types::{CONSOLE_BOTTOM_PADDING, CONSOLE_TOP_PADDING, LINE_HEIGHT, TOP_BUFFER};
     use crate::utils::calculate_start_index;
 
     // 1. Calculate Virtual Scroll Index
     let new_index = calculate_start_index(offset_y, LINE_HEIGHT, TOP_BUFFER);
 
     // 2. Autoscroll Detection (Math-based)
-    let content_height = (total_lines as f64) * LINE_HEIGHT;
+    let content_height =
+        (total_lines as f64) * LINE_HEIGHT + CONSOLE_TOP_PADDING + CONSOLE_BOTTOM_PADDING;
 
-    // Allow small buffer (e.g. 50px)
+    // Allow small buffer (e.g. 10px) for precision
     let is_at_bottom = if content_height <= viewport_height {
         true
     } else {
-        offset_y + viewport_height >= content_height - 50.0
+        offset_y + viewport_height >= content_height - 10.0
     };
 
     (new_index, is_at_bottom)

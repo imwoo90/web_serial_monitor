@@ -7,7 +7,10 @@ use super::layout_utils::{
     calculate_scroll_state, use_auto_scroller, use_window_resize, ConsoleHeader, ResumeScrollButton,
 };
 use super::log_line::LogLine;
-use super::types::{WorkerMsg, BOTTOM_BUFFER_EXTRA, LINE_HEIGHT, TOP_BUFFER};
+use super::types::{
+    WorkerMsg, BOTTOM_BUFFER_EXTRA, CONSOLE_BOTTOM_PADDING, CONSOLE_TOP_PADDING, LINE_HEIGHT,
+    TOP_BUFFER,
+};
 use super::worker::{use_data_request, use_log_worker};
 
 #[component]
@@ -79,7 +82,8 @@ pub fn Console() -> Element {
     use_data_request(start_index, window_size, total_lines, state.log_worker);
     use_auto_scroller(state.autoscroll, total_lines, sentinel_handle);
 
-    let total_height = (total_lines() as f64) * LINE_HEIGHT;
+    let total_height =
+        (total_lines() as f64) * LINE_HEIGHT + CONSOLE_TOP_PADDING + CONSOLE_BOTTOM_PADDING;
     let offset_top = (start_index() as f64) * LINE_HEIGHT;
 
     // Search Effect (Debounced)
@@ -182,7 +186,7 @@ pub fn Console() -> Element {
                     // Virtual Scroll Spacer & Content
                     div { style: "height: {total_height}px; width: 100%; position: absolute; top: 0; left: 0; pointer-events: none;" }
                     div {
-                        style: "position: absolute; top: 0; left: 0; right: 0; transform: translateY({offset_top}px); padding: 0.5rem 1rem 20px 1rem; pointer-events: auto; min-width: 100%; width: max-content;",
+                        style: "position: absolute; top: 0; left: 0; right: 0; transform: translateY({offset_top}px); padding: {CONSOLE_TOP_PADDING}px 1rem {CONSOLE_BOTTOM_PADDING}px 1rem; pointer-events: auto; min-width: 100%; width: max-content;",
                         {
                             let highlights = (state.highlights)().clone();
                             let show_timestamps = (state.show_timestamps)();

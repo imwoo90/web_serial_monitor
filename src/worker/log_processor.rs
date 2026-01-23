@@ -67,8 +67,8 @@ impl CoreProcessor {
         chunk_text: String,
         line_ending_mode: LineEnding,
     ) -> (String, Vec<u64>, Vec<LineRange>) {
-        if self.leftover_chunk.len() > 256 * 1024 {
-            // Safety: If buffer grows too large without newline, force a flush
+        if self.leftover_chunk.len() > 4 * 1024 {
+            // Safety: If buffer grows too large without newline, force a flush (e.g. 4KB)
             self.leftover_chunk.push('\n');
         }
 
