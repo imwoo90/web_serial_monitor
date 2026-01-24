@@ -42,7 +42,7 @@ pub fn SerialMonitor() -> Element {
 
     use_effect(move || {
         if log_worker.read().is_none() {
-            let script_path = crate::worker::log_processor::get_app_script_path();
+            let script_path = crate::worker::get_app_script_path();
 
             let options = web_sys::WorkerOptions::new();
             options.set_type(web_sys::WorkerType::Module);

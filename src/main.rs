@@ -12,7 +12,7 @@ const TAILWIND_CSS: Asset = asset!("/assets/tailwind.css");
 
 fn main() {
     #[cfg(target_arch = "wasm32")]
-    crate::worker::log_processor::start_worker();
+    crate::worker::start_worker();
 
     dioxus::launch(App);
 }
