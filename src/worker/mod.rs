@@ -150,17 +150,29 @@ fn dispatch_msg(
     }
 }
 
-#[wasm_bindgen(inline_js = r#"
-export function get_current_script_url() {
-    const scripts = Array.from(document.querySelectorAll('script[type="module"]'));
-    const appScript = scripts.find(s => (s.src.includes('serial_monitor') || s.src.includes('web_serial_monitor')) && !s.src.includes('snippets'));
-    return appScript ? appScript.src : "./serial_monitor.js";
-}
-"#)]
-extern "C" {
-    fn get_current_script_url() -> String;
-}
-
 pub fn get_app_script_path() -> String {
-    get_current_script_url()
+    let window = web_sys::window().expect("no global window instance found");
+    let document = window.document().expect("should have a document on window");
+
+    // Find all module scripts
+    if let Ok(scripts) = document.query_selector_all("script[type='module']") {
+        for i in 0..scripts.length() {
+            if let Some(node) = scripts.item(i) {
+                let script: web_sys::HtmlScriptElement = node.unchecked_into();
+                let src = script.src();
+                let s = src.to_lowercase();
+
+                // Pure Rust logic: find our main app and exclude wasm-bindgen snippets
+                if (s.contains("serial_monitor") || s.contains("web_serial_monitor"))
+                    && !s.contains("snippets")
+                    && s.ends_with(".js")
+                {
+                    return src;
+                }
+            }
+        }
+    }
+
+    // Fallback
+    "./serial_monitor.js".to_string()
 }
