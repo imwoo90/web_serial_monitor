@@ -52,7 +52,22 @@ pub fn SerialMonitor() -> Element {
                 let mut vl = visible_logs;
 
                 let callback = Closure::wrap(Box::new(move |event: web_sys::MessageEvent| {
-                    if let Some(msg_str) = event.data().as_string() {
+                    let data = event.data();
+
+                    // Handle JS objects (like EXPORT_STREAM)
+                    if let Ok(obj) = data.clone().dyn_into::<js_sys::Object>() {
+                        if let Ok(msg_type) = js_sys::Reflect::get(&obj, &"type".into()) {
+                            if msg_type.as_string() == Some("EXPORT_STREAM".to_string()) {
+                                if let Ok(stream) = js_sys::Reflect::get(&obj, &"stream".into()) {
+                                    crate::utils::file_save::save_stream_to_disk(stream);
+                                    return;
+                                }
+                            }
+                        }
+                    }
+
+                    // Handle stringified JSON
+                    if let Some(msg_str) = data.as_string() {
                         if let Ok(msg) = serde_json::from_str::<WorkerMsg>(&msg_str) {
                             match msg {
                                 WorkerMsg::TotalLines(count) => {

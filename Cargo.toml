@@ -40,6 +40,7 @@ web-sys = { version = "0.3.85", features = [
     "FileSystemDirectoryHandle",
     "FileSystemSyncAccessHandle",
     "FileSystemGetDirectoryOptions",
+    "FileSystemGetFileOptions",
     "FileSystemReadWriteOptions",
     "console",
     "TextEncoder",
