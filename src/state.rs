@@ -60,6 +60,7 @@ pub struct AppState {
     pub flow_control: Signal<&'static str>,
     pub rx_line_ending: Signal<LineEnding>,
     pub is_hex_view: Signal<bool>,
+    pub tx_local_echo: Signal<bool>,
     // Serial State
     pub port: Signal<Option<SerialPortWrapper>>,
     pub reader: Signal<Option<ReaderWrapper>>,

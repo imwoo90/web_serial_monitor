@@ -269,6 +269,45 @@ impl LogProcessor {
         Ok(self.core.get_total_lines() as u32)
     }
 
+    pub fn append_log(&mut self, text: String) -> Result<u32, JsValue> {
+        let handle = self.sync_handle.as_ref().ok_or("No sync handle")?;
+
+        let now = chrono::Utc::now();
+        let time_prefix = format!(
+            "[{:02}:{:02}:{:02}.{:03}] ",
+            now.hour(),
+            now.minute(),
+            now.second(),
+            now.timestamp_subsec_millis()
+        );
+
+        let final_line = format!("[TX] {}{}\n", time_prefix, text);
+        let bytes_len = final_line.len() as u64;
+
+        let write_buffer = self.encoder.encode_with_input(&final_line);
+        let start_pos = handle.get_size()? as u64;
+
+        let opts = web_sys::FileSystemReadWriteOptions::new();
+        opts.set_at(start_pos as f64);
+        handle.write_with_u8_array_and_options(write_buffer.as_ref(), &opts)?;
+
+        self.core.line_offsets.push(start_pos + bytes_len);
+        self.core.line_count += 1;
+
+        if self.core.is_filtering {
+            if let Some(filter) = &self.core.active_filter {
+                if filter.matches(&final_line) {
+                    self.core.filtered_lines.push(LineRange {
+                        start: start_pos,
+                        end: start_pos + bytes_len,
+                    });
+                }
+            }
+        }
+
+        Ok(self.core.get_total_lines() as u32)
+    }
+
     pub fn request_window(&self, start_line: usize, count: usize) -> Result<JsValue, JsValue> {
         let handle = self.sync_handle.as_ref().ok_or("No sync handle")?;
         let total = self.core.get_total_lines();
@@ -289,7 +328,7 @@ impl LogProcessor {
                 let opts = web_sys::FileSystemReadWriteOptions::new();
                 opts.set_at(meta.start as f64);
                 handle.read_with_u8_array_and_options(&mut buf, &opts)?;
-                let text = self.decoder.decode_with_u8_array(&buf)?;
+                let text = web_sys::TextDecoder::new()?.decode_with_u8_array(&buf)?;
                 lines.push(if text.ends_with('\n') {
                     text[..text.len() - 1].to_string()
                 } else {
@@ -304,7 +343,7 @@ impl LogProcessor {
             let opts = web_sys::FileSystemReadWriteOptions::new();
             opts.set_at(start_offset as f64);
             handle.read_with_u8_array_and_options(&mut read_buffer, &opts)?;
-            let text = self.decoder.decode_with_u8_array(&read_buffer)?;
+            let text = web_sys::TextDecoder::new()?.decode_with_u8_array(&read_buffer)?;
             let split = if text.ends_with('\n') {
                 &text[..text.len() - 1]
             } else {
@@ -373,7 +412,7 @@ impl LogProcessor {
             opts.set_at(start_off as f64);
             handle.read_with_u8_array_and_options(&mut buf, &opts)?;
 
-            let text = self.decoder.decode_with_u8_array(&buf)?;
+            let text = web_sys::TextDecoder::new()?.decode_with_u8_array(&buf)?;
             let clean_text = if text.ends_with('\n') {
                 &text[..text.len() - 1]
             } else {

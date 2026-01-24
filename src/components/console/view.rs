@@ -86,6 +86,17 @@ pub fn Console() -> Element {
         (total_lines() as f64) * LINE_HEIGHT + CONSOLE_TOP_PADDING + CONSOLE_BOTTOM_PADDING;
     let offset_top = (start_index() as f64) * LINE_HEIGHT;
 
+    // RX Line Ending Sync Effect
+    use_effect(move || {
+        let ending = (state.rx_line_ending)();
+        if let Some(w) = state.log_worker.peek().as_ref() {
+            let msg = WorkerMsg::SetLineEnding(format!("{:?}", ending));
+            if let Ok(js_obj) = serde_wasm_bindgen::to_value(&msg) {
+                let _ = w.post_message(&js_obj);
+            }
+        }
+    });
+
     // Search Effect (Debounced)
     use_effect(move || {
         let query = (state.filter_query)();

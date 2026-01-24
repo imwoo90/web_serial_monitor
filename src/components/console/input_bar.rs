@@ -36,7 +36,10 @@ pub fn InputBar() -> Element {
                 text.clone().into_bytes()
             };
 
-            match (state.line_ending)() {
+            let ending_ref = (state.line_ending).peek();
+            let ending = *ending_ref;
+
+            match ending {
                 LineEnding::NL => data.push(b'\n'),
                 LineEnding::CR => data.push(b'\r'),
                 LineEnding::NLCR => {
@@ -46,8 +49,18 @@ pub fn InputBar() -> Element {
                 _ => {}
             }
 
-            if let Some(wrapper) = (state.port)() {
+            if let Some(wrapper) = (state.port).peek().as_ref() {
                 if serial::send_data(&wrapper.0, &data).await.is_ok() {
+                    if *(state.tx_local_echo).peek() {
+                        if let Some(w) = state.log_worker.peek().as_ref() {
+                            let _ = w.post_message(
+                                &serde_wasm_bindgen::to_value(
+                                    &crate::components::console::types::WorkerMsg::AppendLog(text),
+                                )
+                                .unwrap(),
+                            );
+                        }
+                    }
                     input_value.set(String::new());
                 }
             }
@@ -153,11 +166,21 @@ pub fn InputBar() -> Element {
                                 }
                             },
                         }
-                        button {
-                            class: "absolute right-2 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded text-[10px] font-bold border transition-colors",
-                            class: if is_hex_input() { "bg-primary/20 text-primary border-primary/30" } else { "text-gray-500 border-transparent hover:text-gray-300" },
-                            onclick: move |_| is_hex_input.set(!is_hex_input()),
-                            "HEX"
+                        div { class: "absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1",
+                            button {
+                                class: "px-1.5 py-0.5 rounded text-[10px] font-bold border transition-colors",
+                                class: if (state.tx_local_echo)() { "bg-emerald-500/20 text-emerald-500 border-emerald-500/30" } else { "text-gray-500 border-transparent hover:text-gray-300" },
+                                onclick: move |_| state.tx_local_echo.set(!(state.tx_local_echo)()),
+                                title: "Local Echo: Show sent commands in log",
+                                "ECHO"
+                            }
+                            button {
+                                class: "px-1.5 py-0.5 rounded text-[10px] font-bold border transition-colors",
+                                class: if is_hex_input() { "bg-primary/20 text-primary border-primary/30" } else { "text-gray-500 border-transparent hover:text-gray-300" },
+                                onclick: move |_| is_hex_input.set(!is_hex_input()),
+                                title: "HEX Input Mode",
+                                "HEX"
+                            }
                         }
                     }
 

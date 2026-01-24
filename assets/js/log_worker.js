@@ -1,14 +1,18 @@
 import init, { LogProcessor } from "/wasm/serial_monitor.js";
 
-let processor, lastNotify = 0, pending = null, currentFile = null;
+let processor, currentFile = null;
+let lastNotifiedCount = 0;
 
-const notify = (count) => {
-    if (Date.now() - lastNotify > 50) {
-        lastNotify = Date.now();
-        self.postMessage({ type: 'TOTAL_LINES', data: count });
-        if (pending) clearTimeout(pending), pending = null;
-    } else if (!pending) pending = setTimeout(() => notify(processor.get_line_count()), 50);
-};
+// Periodic UI Update (Approx 20Hz / 50ms)
+// This ensures smooth, frame-based updates decoupled from chunk timing.
+setInterval(() => {
+    if (!processor) return;
+    const currentCount = processor.get_line_count();
+    if (currentCount !== lastNotifiedCount) {
+        lastNotifiedCount = currentCount;
+        self.postMessage({ type: 'TOTAL_LINES', data: currentCount });
+    }
+}, 50);
 
 const getFiles = async (root) => {
     const files = [];
@@ -71,9 +75,10 @@ const newSession = async (root, cleanup = false) => {
         self.onmessage = async ({ data: { type, data } }) => {
             try {
                 if (type === 'NEW_SESSION') { await newSession(root, true); self.postMessage({ type: 'TOTAL_LINES', data: 0 }); }
-                else if (type === 'APPEND_CHUNK') { processor.append_chunk(data.chunk, data.is_hex); notify(processor.get_line_count()); }
+                else if (type === 'APPEND_CHUNK') { processor.append_chunk(data.chunk, data.is_hex); }
+                else if (type === 'APPEND_LOG') { processor.append_log(data); }
                 else if (type === 'REQUEST_WINDOW') self.postMessage({ type: 'LOG_WINDOW', data: { startLine: data.startLine, lines: processor.request_window(data.startLine, data.count) } });
-                else if (type === 'SEARCH_LOGS') { processor.search_logs(data.query, data.match_case, data.use_regex, data.invert); notify(processor.get_line_count()); }
+                else if (type === 'SEARCH_LOGS') { processor.search_logs(data.query, data.match_case, data.use_regex, data.invert); }
                 else if (type === 'EXPORT_LOGS') { const s = processor.export_logs(!(data?.include_timestamp === false)); self.postMessage({ type: 'EXPORT_STREAM', stream: s }, [s]); }
                 else if (type === 'CLEAR') { processor.clear(); self.postMessage({ type: 'TOTAL_LINES', data: 0 }); }
                 else if (type === 'SET_LINE_ENDING') processor.set_line_ending(data);
