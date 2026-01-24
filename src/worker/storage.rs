@@ -1,5 +1,72 @@
+use crate::worker::error::LogError;
+use crate::worker::index::ByteOffset;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
+
+pub trait StorageBackend {
+    fn read_at(&self, offset: ByteOffset, buf: &mut [u8]) -> Result<usize, LogError>;
+    fn write_at(&self, offset: ByteOffset, data: &[u8]) -> Result<usize, LogError>;
+    fn get_file_size(&self) -> Result<ByteOffset, LogError>;
+    fn truncate(&self, size: u64) -> Result<(), LogError>;
+    fn flush(&self) -> Result<(), LogError>;
+}
+
+pub struct OpfsBackend {
+    pub handle: Option<web_sys::FileSystemSyncAccessHandle>,
+}
+
+impl StorageBackend for OpfsBackend {
+    fn read_at(&self, offset: ByteOffset, buf: &mut [u8]) -> Result<usize, LogError> {
+        let handle = self
+            .handle
+            .as_ref()
+            .ok_or_else(|| LogError::Storage("No handle".into()))?;
+        let opts = web_sys::FileSystemReadWriteOptions::new();
+        opts.set_at(offset.0 as f64);
+        handle
+            .read_with_u8_array_and_options(buf, &opts)
+            .map(|n| n as usize)
+            .map_err(LogError::from)
+    }
+
+    fn write_at(&self, offset: ByteOffset, data: &[u8]) -> Result<usize, LogError> {
+        let handle = self
+            .handle
+            .as_ref()
+            .ok_or_else(|| LogError::Storage("No handle".into()))?;
+        let opts = web_sys::FileSystemReadWriteOptions::new();
+        opts.set_at(offset.0 as f64);
+        handle
+            .write_with_u8_array_and_options(data, &opts)
+            .map(|n| n as usize)
+            .map_err(LogError::from)
+    }
+
+    fn get_file_size(&self) -> Result<ByteOffset, LogError> {
+        self.handle
+            .as_ref()
+            .ok_or_else(|| LogError::Storage("No handle".into()))?
+            .get_size()
+            .map(|s| ByteOffset(s as u64))
+            .map_err(LogError::from)
+    }
+
+    fn truncate(&self, size: u64) -> Result<(), LogError> {
+        self.handle
+            .as_ref()
+            .ok_or_else(|| LogError::Storage("No handle".into()))?
+            .truncate_with_f64(size as f64)
+            .map_err(LogError::from)
+    }
+
+    fn flush(&self) -> Result<(), LogError> {
+        self.handle
+            .as_ref()
+            .ok_or_else(|| LogError::Storage("No handle".into()))?
+            .flush()
+            .map_err(LogError::from)
+    }
+}
 
 pub async fn get_opfs_root() -> Result<web_sys::FileSystemDirectoryHandle, JsValue> {
     let global = js_sys::global();

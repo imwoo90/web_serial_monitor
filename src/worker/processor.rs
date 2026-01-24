@@ -1,8 +1,12 @@
 use crate::state::LineEnding;
+use crate::worker::error::LogError;
+use crate::worker::formatter::{
+    DefaultFormatter, HexFormatter, LogFormatter, LogFormatterStrategy,
+};
 use crate::worker::index::{ActiveFilterBuilder, ByteOffset, LineIndex, LineRange, LogIndex};
-use chrono::Timelike;
+use crate::worker::storage::{OpfsBackend, StorageBackend};
+
 use std::borrow::Cow;
-use std::fmt::{Display, Write};
 use wasm_bindgen::prelude::*;
 use wasm_streams::ReadableStream;
 use web_sys::{FileSystemReadWriteOptions, FileSystemSyncAccessHandle, TextDecoder, TextEncoder};
@@ -11,108 +15,6 @@ const READ_BUFFER_SIZE: usize = 64 * 1024;
 const SEARCH_BATCH_SIZE: usize = 5000;
 const LEFTOVER_FLUSH_LIMIT: usize = 4096;
 const EXPORT_CHUNK_SIZE: u64 = 64 * 1024;
-
-pub trait StorageBackend {
-    fn read_at(&self, offset: ByteOffset, buf: &mut [u8]) -> Result<usize, LogError>;
-    fn write_at(&self, offset: ByteOffset, data: &[u8]) -> Result<usize, LogError>;
-    fn get_file_size(&self) -> Result<ByteOffset, LogError>;
-    fn truncate(&self, size: u64) -> Result<(), LogError>;
-    fn flush(&self) -> Result<(), LogError>;
-}
-
-pub trait LogFormatterStrategy {
-    fn format(&self, text: &str, timestamp: &str) -> String;
-    fn format_chunk(&self, chunk: &[u8]) -> String;
-    fn clean_line_ending<'a>(&self, line: &'a str) -> &'a str;
-}
-
-#[derive(Debug)]
-pub enum LogError {
-    Js(JsValue),
-    Storage(String),
-    Encoding(String),
-    Regex(String),
-}
-
-impl Display for LogError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            LogError::Js(v) => write!(f, "JS Error: {:?}", v),
-            LogError::Storage(s) => write!(f, "Storage Error: {}", s),
-            LogError::Encoding(s) => write!(f, "Encoding Error: {}", s),
-            LogError::Regex(s) => write!(f, "Regex Error: {}", s),
-        }
-    }
-}
-
-impl From<JsValue> for LogError {
-    fn from(v: JsValue) -> Self {
-        LogError::Js(v)
-    }
-}
-
-impl From<LogError> for JsValue {
-    fn from(e: LogError) -> Self {
-        JsValue::from_str(&e.to_string())
-    }
-}
-
-struct OpfsBackend {
-    handle: Option<FileSystemSyncAccessHandle>,
-}
-
-impl StorageBackend for OpfsBackend {
-    fn read_at(&self, offset: ByteOffset, buf: &mut [u8]) -> Result<usize, LogError> {
-        let handle = self
-            .handle
-            .as_ref()
-            .ok_or_else(|| LogError::Storage("No handle".into()))?;
-        let opts = FileSystemReadWriteOptions::new();
-        opts.set_at(offset.0 as f64);
-        handle
-            .read_with_u8_array_and_options(buf, &opts)
-            .map(|n| n as usize)
-            .map_err(LogError::from)
-    }
-
-    fn write_at(&self, offset: ByteOffset, data: &[u8]) -> Result<usize, LogError> {
-        let handle = self
-            .handle
-            .as_ref()
-            .ok_or_else(|| LogError::Storage("No handle".into()))?;
-        let opts = FileSystemReadWriteOptions::new();
-        opts.set_at(offset.0 as f64);
-        handle
-            .write_with_u8_array_and_options(data, &opts)
-            .map(|n| n as usize)
-            .map_err(LogError::from)
-    }
-
-    fn get_file_size(&self) -> Result<ByteOffset, LogError> {
-        self.handle
-            .as_ref()
-            .ok_or_else(|| LogError::Storage("No handle".into()))?
-            .get_size()
-            .map(|s| ByteOffset(s as u64))
-            .map_err(LogError::from)
-    }
-
-    fn truncate(&self, size: u64) -> Result<(), LogError> {
-        self.handle
-            .as_ref()
-            .ok_or_else(|| LogError::Storage("No handle".into()))?
-            .truncate_with_f64(size as f64)
-            .map_err(LogError::from)
-    }
-
-    fn flush(&self) -> Result<(), LogError> {
-        self.handle
-            .as_ref()
-            .ok_or_else(|| LogError::Storage("No handle".into()))?
-            .flush()
-            .map_err(LogError::from)
-    }
-}
 
 struct LogStorage {
     backend: OpfsBackend,
@@ -127,75 +29,6 @@ impl LogStorage {
             encoder: TextEncoder::new().map_err(LogError::from)?,
             decoder: TextDecoder::new().map_err(LogError::from)?,
         })
-    }
-}
-
-struct DefaultFormatter {
-    line_ending: LineEnding,
-}
-
-impl LogFormatterStrategy for DefaultFormatter {
-    fn format(&self, text: &str, timestamp: &str) -> String {
-        format!("{} {}\n", timestamp, text)
-    }
-
-    fn format_chunk(&self, _chunk: &[u8]) -> String {
-        String::new() // Not used in default
-    }
-
-    fn clean_line_ending<'a>(&self, line: &'a str) -> &'a str {
-        let mut clean = line;
-        if self.line_ending == LineEnding::NL && clean.ends_with('\r') {
-            clean = &clean[..clean.len() - 1];
-        }
-        if self.line_ending == LineEnding::CR && clean.starts_with('\n') {
-            clean = &clean[1..];
-        }
-        clean
-    }
-}
-
-struct HexFormatter;
-
-impl LogFormatterStrategy for HexFormatter {
-    fn format(&self, _text: &str, _timestamp: &str) -> String {
-        String::new()
-    }
-
-    fn format_chunk(&self, chunk: &[u8]) -> String {
-        let mut acc = String::with_capacity(chunk.len() * 3 + 1);
-        for b in chunk {
-            let _ = write!(acc, "{:02X} ", b);
-        }
-        acc.push('\n');
-        acc
-    }
-
-    fn clean_line_ending<'a>(&self, line: &'a str) -> &'a str {
-        line
-    }
-}
-
-pub struct LogFormatter {
-    line_ending_mode: LineEnding,
-}
-
-impl LogFormatter {
-    fn new(mode: LineEnding) -> Self {
-        Self {
-            line_ending_mode: mode,
-        }
-    }
-
-    fn get_timestamp(&self) -> String {
-        let now = chrono::Utc::now();
-        format!(
-            "[{:02}:{:02}:{:02}.{:03}]",
-            now.hour(),
-            now.minute(),
-            now.second(),
-            now.timestamp_subsec_millis()
-        )
     }
 }
 

@@ -7,6 +7,8 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::spawn_local;
 
+pub mod error;
+pub mod formatter;
 pub mod index;
 pub mod processor;
 pub mod storage;
