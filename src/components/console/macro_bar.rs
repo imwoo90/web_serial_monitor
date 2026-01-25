@@ -6,7 +6,7 @@ use dioxus::prelude::*;
 #[component]
 pub fn MacroBar() -> Element {
     let state = use_context::<AppState>();
-    let mut storage = use_signal(|| MacroStorage::load());
+    let mut storage = use_signal(MacroStorage::load);
     let mut show_form = use_signal(|| false);
 
     let mut new_label = use_signal(String::new);

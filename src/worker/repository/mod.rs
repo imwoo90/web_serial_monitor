@@ -1,6 +1,8 @@
 pub mod index;
 pub mod storage;
 
+const NEWLINE: u8 = b'\n';
+
 use self::index::{ByteOffset, LineIndex, LineRange, LogIndex};
 use self::storage::{LogStorage, StorageBackend};
 use crate::config::READ_BUFFER_SIZE;
@@ -36,7 +38,7 @@ impl LogRepository {
                 let len = (size.0 - off.0).min(buf.len() as u64) as usize;
                 self.storage.backend.read_at(off, &mut buf[..len])?;
                 for (i, &b) in buf[..len].iter().enumerate() {
-                    if b == 10 {
+                    if b == NEWLINE {
                         self.index.push_line(off + (i as u64 + 1));
                     }
                 }

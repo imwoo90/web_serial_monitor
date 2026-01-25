@@ -36,20 +36,17 @@ fn handle_object_message(state: &mut WorkerState, data: &JsValue) -> Result<(), 
         .ok()
         .and_then(|v| v.as_string());
 
-    match cmd.as_deref() {
-        Some("AppendChunk") => {
-            if let Ok(chunk_val) = js_sys::Reflect::get(data, &"chunk".into()) {
-                let chunk = js_sys::Uint8Array::new(&chunk_val).to_vec();
-                let is_hex = js_sys::Reflect::get(data, &"is_hex".into())
-                    .ok()
-                    .and_then(|v| v.as_bool())
-                    .unwrap_or(false);
+    if let Some("AppendChunk") = cmd.as_deref() {
+        if let Ok(chunk_val) = js_sys::Reflect::get(data, &"chunk".into()) {
+            let chunk = js_sys::Uint8Array::new(&chunk_val).to_vec();
+            let is_hex = js_sys::Reflect::get(data, &"is_hex".into())
+                .ok()
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
 
-                let command = AppendChunkCommand { chunk, is_hex };
-                command.execute(state)?;
-            }
+            let command = AppendChunkCommand { chunk, is_hex };
+            command.execute(state)?;
         }
-        _ => {}
     }
     Ok(())
 }

@@ -57,7 +57,7 @@ pub fn Console() -> Element {
                                 if let Ok(offset) = handle.get_scroll_offset().await {
                                     let (new_index, is_at_bottom) = calculate_scroll_state(
                                         offset.y,
-                                        vs.console_height.read().clone(),
+                                        *vs.console_height.read(),
                                         total_lines,
                                         vs.scale_factor,
                                     );

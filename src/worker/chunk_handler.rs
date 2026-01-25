@@ -79,6 +79,7 @@ impl StreamingLineProcessor {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn process_single_line(
         &self,
         line: &str,

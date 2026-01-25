@@ -20,7 +20,10 @@ pub fn use_window_resize(
                 // Force scroll to bottom during resize if autoscroll is enabled
                 if (autoscroll)() {
                     if let Some(s) = sentinel.peek().as_ref() {
-                        let _ = s.scroll_to(ScrollBehavior::Instant);
+                        let s = s.clone();
+                        spawn(async move {
+                            let _ = s.scroll_to(ScrollBehavior::Instant).await;
+                        });
                     }
                 }
             }
@@ -93,3 +96,24 @@ pub fn calculate_scroll_state(
 }
 
 // Removed ConsoleHeader and ResumeScrollButton to separate files
+
+/// Calculates virtual scroll metrics (total_height, scale_factor, offset_top)
+pub fn calculate_virtual_metrics(total_lines: usize, start_index: usize) -> (f64, f64, f64) {
+    use crate::config::{
+        CONSOLE_BOTTOM_PADDING, CONSOLE_TOP_PADDING, LINE_HEIGHT, MAX_VIRTUAL_HEIGHT,
+    };
+
+    let real_total_height =
+        (total_lines as f64) * LINE_HEIGHT + CONSOLE_TOP_PADDING + CONSOLE_BOTTOM_PADDING;
+
+    let (total_height, scale_factor) = if real_total_height > MAX_VIRTUAL_HEIGHT {
+        let scale = MAX_VIRTUAL_HEIGHT / real_total_height;
+        (MAX_VIRTUAL_HEIGHT, scale)
+    } else {
+        (real_total_height, 1.0)
+    };
+
+    let offset_top = ((start_index as f64) * LINE_HEIGHT) * scale_factor;
+
+    (total_height, scale_factor, offset_top)
+}

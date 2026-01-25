@@ -7,7 +7,7 @@ use dioxus::prelude::*;
 pub fn TransmitBar() -> Element {
     let mut state = use_context::<AppState>();
     let mut input_value = use_signal(String::new);
-    let mut history = use_signal(|| CommandHistory::load());
+    let mut history = use_signal(CommandHistory::load);
     let mut history_index = use_signal(|| None::<usize>);
     let mut is_hex_input = use_signal(|| false);
     let bridge = crate::hooks::use_worker_controller();

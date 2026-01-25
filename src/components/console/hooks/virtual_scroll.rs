@@ -1,5 +1,7 @@
 use crate::components::console::hooks::data_request::use_data_request;
-use crate::components::console::utils::layout_utils::{use_auto_scroller, use_window_resize};
+use crate::components::console::utils::layout_utils::{
+    calculate_virtual_metrics, use_auto_scroller, use_window_resize,
+};
 use crate::config::{BOTTOM_BUFFER_EXTRA, LINE_HEIGHT, TOP_BUFFER};
 use crate::state::AppState;
 use crate::utils::calculate_window_size;
@@ -62,21 +64,8 @@ pub fn use_virtual_scroll() -> VirtualScroll {
     use_data_request(start_index, window_size, total_lines);
     use_auto_scroller(state.ui.autoscroll, total_lines, sentinel_handle);
 
-    let real_total_height = (total_lines() as f64) * LINE_HEIGHT
-        + crate::config::CONSOLE_TOP_PADDING
-        + crate::config::CONSOLE_BOTTOM_PADDING;
-
-    let (total_height, scale_factor) = if real_total_height > crate::config::MAX_VIRTUAL_HEIGHT {
-        let scale = crate::config::MAX_VIRTUAL_HEIGHT / real_total_height;
-        (crate::config::MAX_VIRTUAL_HEIGHT, scale)
-    } else {
-        (real_total_height, 1.0)
-    };
-
-    // Calculate offset_top (scaled)
-    // start_index * LINE_HEIGHT gives the "real" unscaled pixel offset of the first visible line.
-    // We multiply by scale_factor to position it correctly in the scaled container.
-    let offset_top = ((start_index() as f64) * LINE_HEIGHT) * scale_factor;
+    let (total_height, scale_factor, offset_top) =
+        calculate_virtual_metrics(total_lines(), start_index());
 
     VirtualScroll {
         start_index,

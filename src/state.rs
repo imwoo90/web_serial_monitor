@@ -212,8 +212,8 @@ pub fn use_provide_app_state() -> AppState {
     let log_worker = use_signal(|| None::<web_sys::Worker>);
 
     let total_lines = use_signal(|| 0usize);
-    let visible_logs = use_signal(|| Vec::<(usize, String)>::new());
-    let filter_query = use_signal(|| String::new());
+    let visible_logs = use_signal(Vec::<(usize, String)>::new);
+    let filter_query = use_signal(String::new);
     let match_case = use_signal(|| false);
     let use_regex = use_signal(|| false);
     let invert_filter = use_signal(|| false);

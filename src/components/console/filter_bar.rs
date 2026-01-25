@@ -161,7 +161,7 @@ fn HighlightTag(color: &'static str, label: String, onremove: EventHandler<Mouse
 
 #[component]
 fn HighlightInput() -> Element {
-    let mut new_text = use_signal(|| String::new());
+    let mut new_text = use_signal(String::new);
     let mut add_highlight_logic = move || {
         let text = new_text.read().trim().to_string();
         if !text.is_empty() {

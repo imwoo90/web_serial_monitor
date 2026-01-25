@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::fmt;
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Highlight {
@@ -24,12 +25,12 @@ pub enum Parity {
     Odd,
 }
 
-impl ToString for Parity {
-    fn to_string(&self) -> String {
+impl fmt::Display for Parity {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Parity::None => "none".to_string(),
-            Parity::Even => "even".to_string(),
-            Parity::Odd => "odd".to_string(),
+            Parity::None => write!(f, "none"),
+            Parity::Even => write!(f, "even"),
+            Parity::Odd => write!(f, "odd"),
         }
     }
 }
@@ -41,11 +42,11 @@ pub enum FlowControl {
     Hardware,
 }
 
-impl ToString for FlowControl {
-    fn to_string(&self) -> String {
+impl fmt::Display for FlowControl {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            FlowControl::None => "none".to_string(),
-            FlowControl::Hardware => "hardware".to_string(),
+            FlowControl::None => write!(f, "none"),
+            FlowControl::Hardware => write!(f, "hardware"),
         }
     }
 }

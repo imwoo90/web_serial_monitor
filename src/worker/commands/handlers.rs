@@ -57,9 +57,7 @@ impl WorkerCommand for RequestWindowCommand {
 
         for i in s..e {
             if let Some(range) = repo.get_line_range(LineIndex(i)) {
-                let buf = repo
-                    .read_line(range)
-                    .map_err(|e| JsValue::from(LogError::from(e)))?;
+                let buf = repo.read_line(range).map_err(JsValue::from)?;
 
                 let text = repo
                     .storage
@@ -133,11 +131,7 @@ pub struct ExportLogsCommand {
 impl WorkerCommand for ExportLogsCommand {
     fn execute(&self, state: &mut WorkerState) -> Result<bool, JsValue> {
         let repo = &state.proc.repository;
-        let size = repo
-            .storage
-            .backend
-            .get_file_size()
-            .map_err(LogError::from)?;
+        let size = repo.storage.backend.get_file_size()?;
         let handle = repo
             .storage
             .backend

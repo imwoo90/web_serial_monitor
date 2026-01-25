@@ -57,11 +57,9 @@ impl SerialController {
                     )
                     .await;
 
-                    if (state.conn.is_connected)() {
-                        if (state.conn.reader)().is_some() {
-                            state.conn.set_connected(None, None);
-                            state.info("Connection Closed");
-                        }
+                    if (state.conn.is_connected)() && (state.conn.reader)().is_some() {
+                        state.conn.set_connected(None, None);
+                        state.info("Connection Closed");
                     }
                 } else {
                     state.error("Failed to Open Port");

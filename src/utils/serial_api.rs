@@ -69,13 +69,13 @@ pub async fn read_loop(
                     Ok(v) => v,
                     Err(_) => {
                         on_error("Failed to get read value".to_string());
-                        let _ = reader.release_lock();
+                        reader.release_lock();
                         break;
                     }
                 };
 
                 if done {
-                    let _ = reader.release_lock();
+                    reader.release_lock();
                     break;
                 }
 
@@ -87,7 +87,7 @@ pub async fn read_loop(
             }
             Err(e) => {
                 on_error(format!("Read error: {:?}", e));
-                let _ = reader.release_lock();
+                reader.release_lock();
                 break;
             }
         }
