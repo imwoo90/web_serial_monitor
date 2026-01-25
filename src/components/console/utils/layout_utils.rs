@@ -40,7 +40,7 @@ pub fn use_window_resize(
     // Use use_resource to handle scrolling reactively.
     // This is more efficient as it automatically cancels previous tasks if a new change occurs
     // while we are waiting (TimeoutFuture).
-    let _ = use_resource(move || async move {
+    use_resource(move || async move {
         console_height(); // Subscribe to height changes
         let auto = autoscroll(); // Subscribe to autoscroll changes
 
