@@ -1,6 +1,6 @@
-use crate::components::console::hooks::bridge::use_worker_bridge;
 use crate::components::console::hooks::effects::{use_search_sync, use_settings_sync};
 use crate::components::console::ui::viewport::LogViewport;
+use crate::hooks::use_worker_bridge;
 use crate::state::AppState;
 use crate::utils::calculate_window_size;
 use dioxus::prelude::*;

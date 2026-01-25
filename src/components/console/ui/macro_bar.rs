@@ -1,5 +1,5 @@
-use crate::serial;
 use crate::state::{AppState, LineEnding};
+use crate::utils::serial;
 use crate::utils::{format_hex_input, parse_hex_string, MacroStorage};
 use dioxus::prelude::*;
 

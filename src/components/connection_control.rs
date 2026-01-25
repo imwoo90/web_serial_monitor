@@ -7,7 +7,7 @@ use dioxus::prelude::*;
 #[component]
 pub fn ConnectionControl() -> Element {
     let state = use_context::<AppState>();
-    let mut controller = use_serial_controller();
+    let controller = use_serial_controller();
     let is_open = (state.ui.show_settings)();
 
     let settings_icon_class = if is_open {
@@ -43,9 +43,9 @@ pub fn ConnectionControl() -> Element {
                 class: if (state.conn.is_simulating)() { "flex items-center justify-center w-9 h-9 bg-yellow-500/80 hover:bg-yellow-500 border border-yellow-500/50 rounded-lg transition-all active:scale-95 shadow-lg shadow-yellow-500/20 text-white gap-2" } else { "flex items-center justify-center w-9 h-9 bg-[#16181a] border border-[#2a2e33] rounded-lg hover:border-yellow-500/50 hover:text-yellow-500 transition-colors text-gray-400 gap-2" },
                 onclick: move |_| {
                     if (state.conn.is_simulating)() {
-                        (controller.stop_simulation)();
+                        controller.stop_simulation();
                     } else {
-                        (controller.start_simulation)();
+                        controller.start_simulation();
                     }
                 },
                 title: "Test Mode",
@@ -57,9 +57,9 @@ pub fn ConnectionControl() -> Element {
                 class: if (state.conn.is_connected)() { "group relative flex items-center gap-2 bg-red-500/80 hover:bg-red-500 border border-red-500/50 pl-3 pr-4 py-1.5 rounded-lg transition-all duration-300 active:scale-95 shadow-lg shadow-red-500/20 ml-2" } else { "group relative flex items-center gap-2 bg-primary hover:bg-primary-hover border border-primary/50 pl-3 pr-4 py-1.5 rounded-lg transition-all duration-300 active:scale-95 shadow-lg shadow-primary/20 ml-2" },
                 onclick: move |_| {
                     if (state.conn.is_connected)() {
-                        (controller.disconnect)();
+                        controller.disconnect();
                     } else {
-                        (controller.connect)();
+                        controller.connect();
                     }
                 },
                 div { class: "relative flex h-2 w-2",

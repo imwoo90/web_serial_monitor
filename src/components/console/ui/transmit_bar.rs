@@ -1,5 +1,5 @@
-use crate::serial;
 use crate::state::{AppState, LineEnding};
+use crate::utils::serial;
 use crate::utils::{format_hex_input, parse_hex_string, CommandHistory};
 use dioxus::prelude::*;
 
@@ -10,7 +10,7 @@ pub fn TransmitBar() -> Element {
     let mut history = use_signal(|| CommandHistory::load());
     let mut history_index = use_signal(|| None::<usize>);
     let mut is_hex_input = use_signal(|| false);
-    let bridge = crate::components::console::hooks::bridge::use_worker_bridge();
+    let bridge = crate::hooks::use_worker_bridge();
 
     let on_send = move || {
         spawn(async move {

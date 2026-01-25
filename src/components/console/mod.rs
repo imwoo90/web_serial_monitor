@@ -2,7 +2,6 @@ pub mod hooks;
 pub mod ui;
 pub mod utils;
 
-pub use hooks::bridge::use_worker_bridge;
 pub use ui::filter_bar::FilterBar;
 pub use ui::input_bar::InputBar;
 pub use ui::macro_bar::MacroBar;

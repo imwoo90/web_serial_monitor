@@ -1,4 +1,4 @@
-use super::bridge::WorkerBridge;
+use crate::hooks::WorkerBridge;
 use crate::state::AppState;
 use dioxus::prelude::*;
 
