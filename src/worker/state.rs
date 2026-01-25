@@ -52,52 +52,6 @@ impl WorkerState {
         });
     }
 
-    /// Dispatches a worker message and returns whether it was handled synchronously
-    pub(crate) fn dispatch(&mut self, msg: WorkerMsg) -> Result<bool, JsValue> {
-        match msg {
-            WorkerMsg::NewSession => return Ok(false),
-            WorkerMsg::AppendChunk { chunk, is_hex } => {
-                self.proc.append_chunk(&chunk, is_hex)?;
-            }
-            WorkerMsg::AppendLog(text) => {
-                self.proc.append_log(text)?;
-            }
-            WorkerMsg::RequestWindow { start_line, count } => {
-                let val = self.proc.request_window(start_line, count)?;
-                let lines = serde_wasm_bindgen::from_value::<Vec<(usize, String)>>(val)
-                    .map_err(|e| JsValue::from_str(&e.to_string()))?;
-                self.send_msg(WorkerMsg::LogWindow { start_line, lines });
-            }
-            WorkerMsg::Clear => {
-                self.proc.clear()?;
-                self.send_msg(WorkerMsg::TotalLines(0));
-            }
-            WorkerMsg::SetLineEnding(mode) => self.proc.set_line_ending(&mode),
-            WorkerMsg::SearchLogs {
-                query,
-                match_case,
-                use_regex,
-                invert,
-            } => {
-                let count = self
-                    .proc
-                    .search_logs(query, match_case, use_regex, invert)?;
-                self.send_msg(WorkerMsg::TotalLines(count as usize));
-            }
-            WorkerMsg::ExportLogs { include_timestamp } => {
-                let stream = self.proc.export_logs(include_timestamp)?;
-                let resp = js_sys::Object::new();
-                let _ = js_sys::Reflect::set(&resp, &"type".into(), &"EXPORT_STREAM".into());
-                let _ = js_sys::Reflect::set(&resp, &"stream".into(), &stream);
-                let _ = self
-                    .scope
-                    .post_message_with_transfer(&resp, &js_sys::Array::of1(&stream));
-            }
-            _ => {}
-        }
-        Ok(true)
-    }
-
     /// Sends a message to the main thread
     pub(crate) fn send_msg(&self, msg: WorkerMsg) {
         if let Ok(s) = serde_json::to_string(&msg) {

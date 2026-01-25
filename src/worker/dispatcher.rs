@@ -1,3 +1,4 @@
+use crate::worker::commands::{create_command_from_msg, AppendChunkCommand, WorkerCommand};
 use crate::worker::state::WorkerState;
 use crate::worker::types::WorkerMsg;
 use std::cell::RefCell;
@@ -9,7 +10,8 @@ pub fn handle_message(state_rc: Rc<RefCell<WorkerState>>, data: JsValue) {
 
     if let Some(msg_str) = data.as_string() {
         if let Ok(msg) = serde_json::from_str::<WorkerMsg>(&msg_str) {
-            match state.dispatch(msg) {
+            let command = create_command_from_msg(msg);
+            match command.execute(&mut state) {
                 Ok(false) => {
                     // NewSession needs async handling
                     drop(state);
@@ -42,7 +44,9 @@ fn handle_object_message(state: &mut WorkerState, data: &JsValue) -> Result<(), 
                     .ok()
                     .and_then(|v| v.as_bool())
                     .unwrap_or(false);
-                state.proc.append_chunk(&chunk, is_hex)?;
+
+                let command = AppendChunkCommand { chunk, is_hex };
+                command.execute(state)?;
             }
         }
         _ => {}

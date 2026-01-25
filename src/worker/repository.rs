@@ -4,13 +4,10 @@ use crate::worker::storage::{LogStorage, StorageBackend};
 
 /// Repository that manages log storage and indexing together
 /// Ensures consistency between storage writes and index updates
-#[allow(dead_code)]
 pub struct LogRepository {
     pub storage: LogStorage,
     pub index: LogIndex,
 }
-
-#[allow(dead_code)]
 
 impl LogRepository {
     pub fn new() -> Result<Self, LogError> {

@@ -1,12 +1,11 @@
 pub mod chunk_handler;
+pub mod commands;
 pub mod dispatcher;
 pub mod error;
 pub mod export;
-pub mod filter_engine;
 pub mod formatter;
 pub mod index;
 pub mod lifecycle;
-pub mod line_writer;
 pub mod processor;
 pub mod repository;
 pub mod search;
