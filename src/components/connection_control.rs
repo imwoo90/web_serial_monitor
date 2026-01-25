@@ -39,17 +39,20 @@ pub fn ConnectionControl() -> Element {
             }
 
             // Test Mode Button
-            button {
-                class: if (state.conn.is_simulating)() { "flex items-center justify-center w-9 h-9 bg-yellow-500/80 hover:bg-yellow-500 border border-yellow-500/50 rounded-lg transition-all active:scale-95 shadow-lg shadow-yellow-500/20 text-white gap-2" } else { "flex items-center justify-center w-9 h-9 bg-[#16181a] border border-[#2a2e33] rounded-lg hover:border-yellow-500/50 hover:text-yellow-500 transition-colors text-gray-400 gap-2" },
-                onclick: move |_| {
-                    if (state.conn.is_simulating)() {
-                        controller.stop_simulation();
-                    } else {
-                        controller.start_simulation();
-                    }
-                },
-                title: "Test Mode",
-                span { class: "material-symbols-outlined text-[18px]", "bug_report" }
+            // Test Mode Button
+            if cfg!(debug_assertions) {
+                button {
+                    class: if (state.conn.is_simulating)() { "flex items-center justify-center w-9 h-9 bg-yellow-500/80 hover:bg-yellow-500 border border-yellow-500/50 rounded-lg transition-all active:scale-95 shadow-lg shadow-yellow-500/20 text-white gap-2" } else { "flex items-center justify-center w-9 h-9 bg-[#16181a] border border-[#2a2e33] rounded-lg hover:border-yellow-500/50 hover:text-yellow-500 transition-colors text-gray-400 gap-2" },
+                    onclick: move |_| {
+                        if (state.conn.is_simulating)() {
+                            controller.stop_simulation();
+                        } else {
+                            controller.start_simulation();
+                        }
+                    },
+                    title: "Test Mode",
+                    span { class: "material-symbols-outlined text-[18px]", "bug_report" }
+                }
             }
 
             // Connect Button
