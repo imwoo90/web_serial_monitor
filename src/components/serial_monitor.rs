@@ -3,10 +3,8 @@ use crate::state::{AppState, LineEnding};
 use dioxus::prelude::*;
 
 use super::console::{Console, FilterBar, InputBar, MacroBar};
-use crate::components::console::types::WorkerMsg;
 use crate::components::header::Header;
-use wasm_bindgen::prelude::Closure;
-use wasm_bindgen::JsCast;
+use crate::hooks::use_log_worker;
 
 #[component]
 pub fn SerialMonitor() -> Element {
@@ -35,85 +33,12 @@ pub fn SerialMonitor() -> Element {
     let reader = use_signal(|| None);
     let is_connected = use_signal(|| false);
     let is_simulating = use_signal(|| false);
-    let mut log_worker = use_signal(|| None::<web_sys::Worker>);
+    let log_worker = use_signal(|| None::<web_sys::Worker>);
     let toasts = use_signal(Vec::new);
     let total_lines = use_signal(|| 0usize);
     let visible_logs = use_signal(|| Vec::<String>::new());
 
-    use_effect(move || {
-        if log_worker.read().is_none() {
-            let script_path = crate::worker::get_app_script_path();
-
-            let options = web_sys::WorkerOptions::new();
-            options.set_type(web_sys::WorkerType::Module);
-
-            if let Ok(worker) = web_sys::Worker::new_with_options(&script_path, &options) {
-                let mut tl = total_lines;
-                let mut vl = visible_logs;
-
-                let callback = Closure::wrap(Box::new(move |event: web_sys::MessageEvent| {
-                    let data = event.data();
-
-                    // Handle JS objects (like EXPORT_STREAM)
-                    if let Ok(obj) = data.clone().dyn_into::<js_sys::Object>() {
-                        if let Ok(msg_type) = js_sys::Reflect::get(&obj, &"type".into()) {
-                            if msg_type.as_string() == Some("EXPORT_STREAM".to_string()) {
-                                if let Ok(stream) = js_sys::Reflect::get(&obj, &"stream".into()) {
-                                    crate::utils::file_save::save_stream_to_disk(stream);
-                                    return;
-                                }
-                            }
-                        }
-                    }
-
-                    // Handle stringified JSON
-                    if let Some(msg_str) = data.as_string() {
-                        if let Ok(msg) = serde_json::from_str::<WorkerMsg>(&msg_str) {
-                            match msg {
-                                WorkerMsg::TotalLines(count) => {
-                                    tl.set(count);
-                                    if count == 0 {
-                                        vl.set(Vec::new());
-                                    }
-                                }
-                                WorkerMsg::LogWindow { lines, .. } => vl.set(lines),
-                                WorkerMsg::Error(msg) => {
-                                    if let Some(win) = web_sys::window() {
-                                        let _ = win
-                                            .alert_with_message(&format!("Worker Error: {}", msg));
-                                    }
-                                }
-                                _ => {}
-                            }
-                        }
-                    }
-                }) as Box<dyn FnMut(_)>);
-
-                worker.set_onmessage(Some(callback.as_ref().unchecked_ref()));
-                callback.forget();
-                log_worker.set(Some(worker));
-            }
-        }
-    });
-
-    // Sync RX Line Ending to Worker
-    use_effect(move || {
-        let ending = rx_line_ending();
-        if let Some(w) = log_worker.read().as_ref() {
-            let mode_str = match ending {
-                LineEnding::None => "None",
-                LineEnding::NL => "NL",
-                LineEnding::CR => "CR",
-                LineEnding::NLCR => "NLCR",
-            };
-            crate::utils::send_worker_msg(
-                w,
-                crate::components::console::types::WorkerMsg::SetLineEnding(mode_str.to_string()),
-            );
-        }
-    });
-
-    use_context_provider(|| AppState {
+    let app_state = AppState {
         show_settings,
         show_highlights,
         show_timestamps,
@@ -140,7 +65,12 @@ pub fn SerialMonitor() -> Element {
         total_lines,
         visible_logs,
         toasts,
-    });
+    };
+
+    use_context_provider(|| app_state);
+
+    // Lifecycle/Effects Hook
+    use_log_worker(app_state);
 
     rsx! {
         div { class: "bg-background-dark h-screen w-full font-display text-white selection:bg-primary/30 selection:text-primary overflow-x-auto overflow-y-hidden",
