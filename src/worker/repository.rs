@@ -1,6 +1,8 @@
+use crate::config::READ_BUFFER_SIZE;
 use crate::worker::error::LogError;
 use crate::worker::index::{ByteOffset, LineIndex, LineRange, LogIndex};
 use crate::worker::storage::{LogStorage, StorageBackend};
+use web_sys::FileSystemSyncAccessHandle;
 
 /// Repository that manages log storage and indexing together
 /// Ensures consistency between storage writes and index updates
@@ -15,6 +17,30 @@ impl LogRepository {
             storage: LogStorage::new()?,
             index: LogIndex::new(),
         })
+    }
+
+    pub fn initialize_storage(
+        &mut self,
+        handle: FileSystemSyncAccessHandle,
+    ) -> Result<(), LogError> {
+        self.storage.backend.handle = Some(handle);
+        let size = self.storage.backend.get_file_size()?;
+
+        if size.0 > 0 {
+            self.reset_index();
+            let (mut off, mut buf) = (ByteOffset(0), vec![0u8; READ_BUFFER_SIZE]);
+            while off.0 < size.0 {
+                let len = (size.0 - off.0).min(buf.len() as u64) as usize;
+                self.storage.backend.read_at(off, &mut buf[..len])?;
+                for (i, &b) in buf[..len].iter().enumerate() {
+                    if b == 10 {
+                        self.index.push_line(off + (i as u64 + 1));
+                    }
+                }
+                off = off + (len as u64);
+            }
+        }
+        Ok(())
     }
 
     /// Appends lines to storage and updates index atomically
@@ -74,5 +100,21 @@ impl LogRepository {
     /// Resets the index (used when loading existing data)
     pub fn reset_index(&mut self) {
         self.index.reset_base();
+    }
+
+    /// Checks if filtering is active
+    pub fn is_filtering(&self) -> bool {
+        self.index.is_filtering
+    }
+
+    /// Checks if text matches the active filter
+    pub fn matches_active_filter(&self, text: &str) -> bool {
+        if !self.index.is_filtering {
+            return false;
+        }
+        self.index
+            .active_filter
+            .as_ref()
+            .is_some_and(|f| f.matches(text))
     }
 }

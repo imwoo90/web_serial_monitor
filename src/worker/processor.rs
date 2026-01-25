@@ -2,17 +2,14 @@ use crate::state::LineEnding;
 use crate::worker::chunk_handler::StreamingLineProcessor;
 use crate::worker::error::LogError;
 
-use crate::worker::formatter::{
-    DefaultFormatter, HexFormatter, LogFormatter, LogFormatterStrategy,
-};
+use crate::worker::formatter::LogFormatter;
 use crate::worker::index::{ByteOffset, LineRange};
 use crate::worker::repository::LogRepository;
-use crate::worker::storage::StorageBackend;
 
 use wasm_bindgen::prelude::*;
 use web_sys::FileSystemSyncAccessHandle;
 
-use crate::config::{MAX_LINE_BYTES, READ_BUFFER_SIZE};
+use crate::config::MAX_LINE_BYTES;
 
 #[wasm_bindgen]
 pub struct LogProcessor {
@@ -59,26 +56,7 @@ impl LogProcessor {
         &mut self,
         handle: FileSystemSyncAccessHandle,
     ) -> Result<(), LogError> {
-        self.repository.storage.backend.handle = Some(handle);
-        let size = self.repository.storage.backend.get_file_size()?;
-        if size.0 > 0 {
-            self.repository.reset_index();
-            let (mut off, mut buf) = (ByteOffset(0), vec![0u8; READ_BUFFER_SIZE]);
-            while off.0 < size.0 {
-                let len = (size.0 - off.0).min(buf.len() as u64) as usize;
-                self.repository
-                    .storage
-                    .backend
-                    .read_at(off, &mut buf[..len])?;
-                for (i, &b) in buf[..len].iter().enumerate() {
-                    if b == 10 {
-                        self.repository.index.push_line(off + (i as u64 + 1));
-                    }
-                }
-                off = off + (len as u64);
-            }
-        }
-        Ok(())
+        self.repository.initialize_storage(handle)
     }
 
     pub fn append_chunk(&mut self, chunk: &[u8], is_hex: bool) -> Result<u32, JsValue> {
@@ -87,17 +65,7 @@ impl LogProcessor {
     }
 
     fn append_chunk_internal(&mut self, chunk: &[u8], is_hex: bool) -> Result<u32, LogError> {
-        let formatter: Box<dyn LogFormatterStrategy> = if is_hex {
-            Box::new(HexFormatter {
-                line_ending: self.formatter.line_ending_mode,
-                max_bytes: MAX_LINE_BYTES,
-            })
-        } else {
-            Box::new(DefaultFormatter {
-                line_ending: self.formatter.line_ending_mode,
-                max_bytes: MAX_LINE_BYTES,
-            })
-        };
+        let formatter = self.formatter.create_strategy(is_hex, MAX_LINE_BYTES);
 
         let text = if is_hex {
             formatter.format_chunk(chunk)
@@ -106,15 +74,15 @@ impl LogProcessor {
         };
 
         let timestamp = self.formatter.get_timestamp();
-        let is_filtering = self.repository.index.is_filtering;
-        let active_filter = self.repository.index.active_filter.clone();
+        let repo = &self.repository;
+        let is_filtering = repo.is_filtering();
 
         let (batch, offsets, filtered) = self.chunk_handler.process_chunk(
             &text,
             &*formatter,
             &timestamp,
             is_filtering,
-            |text: &str| is_filtering && active_filter.as_ref().is_some_and(|f| f.matches(text)),
+            |text: &str| repo.matches_active_filter(text),
         );
 
         if !batch.is_empty() {
@@ -130,14 +98,7 @@ impl LogProcessor {
     fn append_log_internal(&mut self, text: String) -> Result<u32, LogError> {
         let log = format!("[TX] {} {}\n", self.formatter.get_timestamp(), text);
         let len = ByteOffset(log.len() as u64);
-        let filtered = if self.repository.index.is_filtering
-            && self
-                .repository
-                .index
-                .active_filter
-                .as_ref()
-                .is_some_and(|f| f.matches(&log))
-        {
+        let filtered = if self.repository.matches_active_filter(&log) {
             vec![LineRange {
                 start: ByteOffset(0),
                 end: len,

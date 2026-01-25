@@ -100,4 +100,18 @@ impl LogFormatter {
             now.timestamp_subsec_millis()
         )
     }
+
+    pub fn create_strategy(&self, is_hex: bool, max_bytes: usize) -> Box<dyn LogFormatterStrategy> {
+        if is_hex {
+            Box::new(HexFormatter {
+                line_ending: self.line_ending_mode,
+                max_bytes,
+            })
+        } else {
+            Box::new(DefaultFormatter {
+                line_ending: self.line_ending_mode,
+                max_bytes,
+            })
+        }
+    }
 }
