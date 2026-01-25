@@ -1,5 +1,5 @@
-use crate::components::console::types::WorkerMsg;
 use crate::state::AppState;
+use crate::worker::types::WorkerMsg;
 use dioxus::prelude::*;
 use wasm_bindgen::prelude::Closure;
 use wasm_bindgen::JsCast;

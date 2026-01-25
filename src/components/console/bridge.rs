@@ -1,6 +1,6 @@
-use crate::components::console::types::WorkerMsg;
 use crate::state::AppState;
 use crate::utils::{send_chunk_to_worker, send_worker_msg};
+use crate::worker::types::WorkerMsg;
 use dioxus::prelude::*;
 
 #[derive(Clone, Copy)]

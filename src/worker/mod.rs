@@ -1,6 +1,6 @@
-use crate::components::console::types::WorkerMsg;
 use crate::worker::processor::LogProcessor;
 use crate::worker::storage::{get_opfs_root, init_opfs_session, new_session};
+use crate::worker::types::WorkerMsg;
 use std::cell::RefCell;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
@@ -12,6 +12,7 @@ pub mod formatter;
 pub mod index;
 pub mod processor;
 pub mod storage;
+pub mod types;
 
 struct WorkerState {
     proc: LogProcessor,

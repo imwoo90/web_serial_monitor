@@ -1,4 +1,4 @@
-use super::types::LINE_HEIGHT;
+use super::constants::LINE_HEIGHT;
 use crate::state::Highlight;
 use crate::utils::process_log_segments;
 use dioxus::prelude::*;

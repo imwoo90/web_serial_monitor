@@ -6,13 +6,13 @@ use crate::utils::calculate_window_size;
 use dioxus::prelude::*;
 use std::rc::Rc;
 
+use super::constants::{
+    BOTTOM_BUFFER_EXTRA, CONSOLE_BOTTOM_PADDING, CONSOLE_TOP_PADDING, LINE_HEIGHT, TOP_BUFFER,
+};
+use super::data_request::use_data_request;
 use super::layout_utils::{
     calculate_scroll_state, use_auto_scroller, use_window_resize, ConsoleHeader, ResumeScrollButton,
 };
-use super::types::{
-    BOTTOM_BUFFER_EXTRA, CONSOLE_BOTTOM_PADDING, CONSOLE_TOP_PADDING, LINE_HEIGHT, TOP_BUFFER,
-};
-use super::worker::use_data_request;
 
 #[component]
 pub fn Console() -> Element {

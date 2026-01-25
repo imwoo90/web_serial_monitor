@@ -1,5 +1,5 @@
+use crate::components::console::constants::{CONSOLE_BOTTOM_PADDING, CONSOLE_TOP_PADDING};
 use crate::components::console::log_line::LogLine;
-use crate::components::console::types::{CONSOLE_BOTTOM_PADDING, CONSOLE_TOP_PADDING};
 use crate::state::AppState;
 use dioxus::prelude::*;
 

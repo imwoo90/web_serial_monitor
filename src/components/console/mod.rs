@@ -1,13 +1,13 @@
 pub mod bridge;
+pub mod constants;
+pub mod data_request;
 pub mod effects;
 pub mod filter_bar;
 pub mod layout_utils;
 pub mod log_line;
-pub mod types;
 
 pub mod view;
 pub mod viewport;
-pub mod worker;
 
 pub mod input_bar;
 pub mod macro_bar;

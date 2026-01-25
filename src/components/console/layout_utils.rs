@@ -1,4 +1,4 @@
-use super::types::HEADER_OFFSET;
+use super::constants::HEADER_OFFSET;
 use dioxus::prelude::*;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
@@ -66,7 +66,7 @@ pub fn calculate_scroll_state(
     viewport_height: f64,
     total_lines: usize,
 ) -> (usize, bool) {
-    use super::types::{CONSOLE_BOTTOM_PADDING, CONSOLE_TOP_PADDING, LINE_HEIGHT, TOP_BUFFER};
+    use super::constants::{CONSOLE_BOTTOM_PADDING, CONSOLE_TOP_PADDING, LINE_HEIGHT, TOP_BUFFER};
     use crate::utils::calculate_start_index;
 
     // 1. Calculate Virtual Scroll Index
