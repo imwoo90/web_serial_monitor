@@ -1,10 +1,10 @@
-use crate::components::common::CustomSelect;
+use crate::components::ui::CustomSelect;
 use crate::state::AppState;
 use dioxus::prelude::*;
 
 #[component]
 pub fn SettingsDropdown(is_open: bool, onclose: EventHandler<()>) -> Element {
-    let mut state = use_context::<AppState>();
+    let state = use_context::<AppState>();
 
     rsx! {
         if is_open {
@@ -24,7 +24,7 @@ pub fn SettingsDropdown(is_open: bool, onclose: EventHandler<()>) -> Element {
                     CustomSelect {
                         options: vec!["5", "6", "7", "8"],
                         selected: state.serial.data_bits,
-                        onchange: move |val| state.serial.data_bits.set(val),
+                        onchange: move |val| state.serial.set_data_bits(val),
                         disabled: (state.conn.is_connected)(),
                     }
                 }
@@ -35,7 +35,7 @@ pub fn SettingsDropdown(is_open: bool, onclose: EventHandler<()>) -> Element {
                     CustomSelect {
                         options: vec!["1", "1.5", "2"],
                         selected: state.serial.stop_bits,
-                        onchange: move |val| state.serial.stop_bits.set(val),
+                        onchange: move |val| state.serial.set_stop_bits(val),
                         disabled: (state.conn.is_connected)(),
                     }
                 }
@@ -46,7 +46,7 @@ pub fn SettingsDropdown(is_open: bool, onclose: EventHandler<()>) -> Element {
                     CustomSelect {
                         options: vec!["None", "Even", "Odd", "Mark", "Space"],
                         selected: state.serial.parity,
-                        onchange: move |val| state.serial.parity.set(val),
+                        onchange: move |val| state.serial.set_parity(val),
                         disabled: (state.conn.is_connected)(),
                     }
                 }
@@ -57,7 +57,7 @@ pub fn SettingsDropdown(is_open: bool, onclose: EventHandler<()>) -> Element {
                     CustomSelect {
                         options: vec!["None", "Hardware", "Software"],
                         selected: state.serial.flow_control,
-                        onchange: move |val| state.serial.flow_control.set(val),
+                        onchange: move |val| state.serial.set_flow_control(val),
                         disabled: (state.conn.is_connected)(),
                     }
                 }

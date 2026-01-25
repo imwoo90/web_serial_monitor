@@ -1,4 +1,4 @@
-use crate::components::common::{ToastMessage, ToastType};
+use crate::components::ui::{ToastMessage, ToastType};
 use dioxus::prelude::*;
 use gloo_timers::future::TimeoutFuture;
 use web_sys::{ReadableStreamDefaultReader, SerialPort};
@@ -90,9 +90,86 @@ pub struct AppState {
     pub log: LogState,
 }
 
-impl AppState {
+impl UIState {
+    pub fn toggle_settings(&self) {
+        let mut s = self.show_settings;
+        s.set(!s());
+    }
+    pub fn toggle_highlights(&self) {
+        let mut s = self.show_highlights;
+        s.set(!s());
+    }
+    pub fn toggle_timestamps(&self) {
+        let mut s = self.show_timestamps;
+        s.set(!s());
+    }
+    pub fn toggle_autoscroll(&self) {
+        let mut s = self.autoscroll;
+        s.set(!s());
+    }
+    pub fn set_autoscroll(&self, value: bool) {
+        let mut s = self.autoscroll;
+        s.set(value);
+    }
+    pub fn toggle_hex_view(&self) {
+        let mut s = self.is_hex_view;
+        s.set(!s());
+    }
+}
+
+impl SerialSettings {
+    pub fn set_baud_rate(&self, rate: String) {
+        let mut b = self.baud_rate;
+        b.set(rate);
+    }
+    pub fn set_data_bits(&self, bits: &'static str) {
+        let mut s = self.data_bits;
+        s.set(bits);
+    }
+    pub fn set_stop_bits(&self, bits: &'static str) {
+        let mut s = self.stop_bits;
+        s.set(bits);
+    }
+    pub fn set_parity(&self, p: &'static str) {
+        let mut s = self.parity;
+        s.set(p);
+    }
+    pub fn set_flow_control(&self, f: &'static str) {
+        let mut s = self.flow_control;
+        s.set(f);
+    }
+}
+
+impl ConnectionState {
+    pub fn set_connected(
+        &self,
+        port: Option<SerialPort>,
+        reader: Option<ReadableStreamDefaultReader>,
+    ) {
+        let mut p = self.port;
+        let mut r = self.reader;
+        let mut c = self.is_connected;
+        p.set(port.map(SerialPortWrapper));
+        r.set(reader.map(ReaderWrapper));
+        c.set(p.read().is_some());
+    }
+
+    pub fn set_simulating(&self, simulating: bool) {
+        let mut s = self.is_simulating;
+        s.set(simulating);
+    }
+}
+
+impl LogState {
+    pub fn clear(&self) {
+        let mut t = self.total_lines;
+        let mut v = self.visible_logs;
+        t.set(0);
+        v.set(Vec::new());
+    }
+
     pub fn add_toast(&self, message: &str, type_: ToastType) {
-        let mut toasts = self.log.toasts;
+        let mut toasts = self.toasts;
         let id = js_sys::Date::now() as usize;
 
         toasts.write().push(ToastMessage {
@@ -101,17 +178,39 @@ impl AppState {
             type_,
         });
 
-        let mut toasts_clone = toasts;
         spawn(async move {
-            TimeoutFuture::new(3000).await;
-            toasts_clone.write().retain(|t| t.id != id);
+            TimeoutFuture::new(crate::config::TOAST_DURATION_MS).await;
+            toasts.write().retain(|t| t.id != id);
         });
     }
 
+    pub fn add_highlight(&self, text: String, color: &'static str) {
+        let mut h = self.highlights;
+        let mut list = h.read().clone();
+        let next_id = list.iter().map(|h| h.id).max().unwrap_or(0) + 1;
+        list.push(Highlight {
+            id: next_id,
+            text,
+            color,
+        });
+        h.set(list);
+    }
+
+    pub fn remove_highlight(&self, id: usize) {
+        let mut h = self.highlights;
+        let mut list = h.read().clone();
+        list.retain(|h| h.id != id);
+        h.set(list);
+    }
+}
+
+impl AppState {
+    pub fn add_toast(&self, message: &str, type_: ToastType) {
+        self.log.add_toast(message, type_);
+    }
+
     pub fn clear_logs(&self) {
-        let (mut total, mut visible) = (self.log.total_lines, self.log.visible_logs);
-        total.set(0);
-        visible.set(Vec::new());
+        self.log.clear();
     }
 
     pub fn success(&self, msg: &str) {

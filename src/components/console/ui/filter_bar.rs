@@ -1,5 +1,5 @@
-use crate::components::common::{IconButton, LineEndSelector, PanelHeader};
-use crate::state::{AppState, Highlight, HIGHLIGHT_COLORS};
+use crate::components::ui::{IconButton, LineEndSelector, PanelHeader};
+use crate::state::{AppState, HIGHLIGHT_COLORS};
 use dioxus::prelude::*;
 
 #[component]
@@ -22,10 +22,7 @@ pub fn FilterBar() -> Element {
                         button {
                             class: "px-2 py-1 rounded text-[10px] font-bold border transition-colors select-none",
                             class: if (state.ui.show_timestamps)() { "bg-primary/20 text-primary border-primary/30" } else { "text-gray-500 border-transparent hover:text-gray-300 bg-[#2a2e33]/50" },
-                            onclick: move |_| {
-                                let v = (state.ui.show_timestamps)();
-                                state.ui.show_timestamps.set(!v);
-                            },
+                            onclick: move |_| state.ui.toggle_timestamps(),
                             "TIME"
                         }
 
@@ -33,7 +30,7 @@ pub fn FilterBar() -> Element {
                         button {
                             class: "px-2 py-1 rounded text-[10px] font-bold border transition-colors select-none",
                             class: if (state.ui.is_hex_view)() { "bg-primary/20 text-primary border-primary/30" } else { "text-gray-500 border-transparent hover:text-gray-300 bg-[#2a2e33]/50" },
-                            onclick: move |_| state.ui.is_hex_view.set(!(state.ui.is_hex_view)()),
+                            onclick: move |_| state.ui.toggle_hex_view(),
                             "HEX"
                         }
                     }
@@ -75,7 +72,7 @@ pub fn FilterBar() -> Element {
                                 let cur = index_open();
                                 index_open.set(!cur);
                                 if !cur && !show_highlights {
-                                    state.ui.show_highlights.set(true);
+                                    state.ui.toggle_highlights();
                                 }
                             },
                             title: "Highlight Rules",
@@ -97,7 +94,7 @@ pub fn FilterBar() -> Element {
 
 #[component]
 fn HighlightPanel(visible: bool, onclose: EventHandler<()>) -> Element {
-    let mut state = use_context::<AppState>();
+    let state = use_context::<AppState>();
     let highlights = (state.log.highlights)();
 
     rsx! {
@@ -114,10 +111,10 @@ fn HighlightPanel(visible: bool, onclose: EventHandler<()>) -> Element {
 
                 div { class: "flex items-center justify-between",
                     span { class: "text-[10px] uppercase text-gray-500 font-bold", "Enable Highlighting" }
-                    crate::components::common::ToggleSwitch {
+                    crate::components::ui::ToggleSwitch {
                         label: "",
                         active: (state.ui.show_highlights)(),
-                        onclick: move |_| state.ui.show_highlights.set(!(state.ui.show_highlights)()),
+                        onclick: move |_| state.ui.toggle_highlights(),
                     }
                 }
 
@@ -130,10 +127,8 @@ fn HighlightPanel(visible: bool, onclose: EventHandler<()>) -> Element {
                             color: h.color,
                             label: h.text.clone(),
                             onremove: move |_| {
-                                let mut state = use_context::<AppState>();
-                                let mut list = state.log.highlights.read().clone();
-                                list.retain(|item| item.id != h.id);
-                                state.log.highlights.set(list);
+                                let state = use_context::<AppState>();
+                                state.log.remove_highlight(h.id);
                             },
                         }
                     }
@@ -166,12 +161,11 @@ fn HighlightTag(color: &'static str, label: String, onremove: EventHandler<Mouse
 #[component]
 fn HighlightInput() -> Element {
     let mut new_text = use_signal(|| String::new());
-
     let mut add_highlight_logic = move || {
         let text = new_text.read().trim().to_string();
         if !text.is_empty() {
-            let mut state = use_context::<AppState>();
-            let mut list = state.log.highlights.read().clone();
+            let state = use_context::<AppState>();
+            let list = state.log.highlights.read().clone();
 
             let used_colors: std::collections::HashSet<&str> =
                 list.iter().map(|h| h.color).collect();
@@ -181,13 +175,7 @@ fn HighlightInput() -> Element {
                 .copied()
                 .unwrap_or_else(|| HIGHLIGHT_COLORS[list.len() % HIGHLIGHT_COLORS.len()]);
 
-            let next_id = list.iter().map(|h| h.id).max().unwrap_or(0) + 1;
-            list.push(Highlight {
-                id: next_id,
-                text,
-                color,
-            });
-            state.log.highlights.set(list);
+            state.log.add_highlight(text, color);
             new_text.set(String::new());
         }
     };

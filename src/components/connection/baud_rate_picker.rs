@@ -1,4 +1,4 @@
-use crate::components::common::CustomInputSelect;
+use crate::components::ui::CustomInputSelect;
 use dioxus::prelude::*;
 
 #[component]

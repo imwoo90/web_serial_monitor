@@ -17,7 +17,7 @@ use crate::components::console::utils::layout_utils::{
 
 #[component]
 pub fn Console() -> Element {
-    let mut state = use_context::<AppState>();
+    let state = use_context::<AppState>();
     let bridge = use_worker_bridge();
 
     let mut start_index = use_signal(|| 0usize);
@@ -92,6 +92,7 @@ pub fn Console() -> Element {
                         start_index.set(0);
                         state.success("Logs Cleared");
                     },
+                    ontoggle_autoscroll: move |_| state.ui.toggle_autoscroll(),
                 }
 
                 LogViewport {
@@ -121,7 +122,7 @@ pub fn Console() -> Element {
                                         start_index.set(new_index);
                                     }
                                     if (state.ui.autoscroll)() != is_at_bottom {
-                                        state.ui.autoscroll.set(is_at_bottom);
+                                        state.ui.set_autoscroll(is_at_bottom);
                                     }
                                 }
                             }
@@ -131,7 +132,7 @@ pub fn Console() -> Element {
                 }
 
                 if !(state.ui.autoscroll)() {
-                    ResumeScrollButton { onclick: move |_| state.ui.autoscroll.set(true) }
+                    ResumeScrollButton { onclick: move |_| state.ui.set_autoscroll(true) }
                 }
             }
         }

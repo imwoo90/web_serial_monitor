@@ -1,4 +1,4 @@
-use crate::components::common::ToastContainer;
+use crate::components::ui::ToastContainer;
 use crate::state::{AppState, LineEnding};
 use dioxus::prelude::*;
 

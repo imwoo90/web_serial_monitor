@@ -1,12 +1,12 @@
-use crate::components::common::IconButton;
 use crate::components::connection::{BaudRatePicker, PortStatus, SettingsDropdown};
+use crate::components::ui::IconButton;
 use crate::hooks::use_serial_controller;
 use crate::state::AppState;
 use dioxus::prelude::*;
 
 #[component]
 pub fn ConnectionControl() -> Element {
-    let mut state = use_context::<AppState>();
+    let state = use_context::<AppState>();
     let mut controller = use_serial_controller();
     let is_open = (state.ui.show_settings)();
 
@@ -25,7 +25,7 @@ pub fn ConnectionControl() -> Element {
             BaudRatePicker {
                 baud_rate: state.serial.baud_rate,
                 disabled: (state.conn.is_connected)(),
-                onchange: move |val| state.serial.baud_rate.set(val),
+                onchange: move |val| state.serial.set_baud_rate(val),
             }
 
             // Settings Button
@@ -34,10 +34,7 @@ pub fn ConnectionControl() -> Element {
                 active: is_open,
                 class: "w-9 h-9 bg-[#16181a] border border-[#2a2e33] rounded-lg hover:border-primary/50 hover:text-white transition-colors",
                 icon_class: settings_icon_class,
-                onclick: move |_| {
-                    let current = (state.ui.show_settings)();
-                    state.ui.show_settings.set(!current);
-                },
+                onclick: move |_| state.ui.toggle_settings(),
                 title: "Settings",
             }
 
@@ -81,7 +78,11 @@ pub fn ConnectionControl() -> Element {
             // Settings Dropdown Panel
             SettingsDropdown {
                 is_open,
-                onclose: move |_| state.ui.show_settings.set(false),
+                onclose: move |_| {
+                    if (state.ui.show_settings)() {
+                        state.ui.toggle_settings();
+                    }
+                },
             }
         }
     }

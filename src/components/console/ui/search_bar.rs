@@ -1,4 +1,4 @@
-use crate::components::common::FilterOptionButton;
+use crate::components::ui::FilterOptionButton;
 use crate::state::AppState;
 use dioxus::prelude::*;
 

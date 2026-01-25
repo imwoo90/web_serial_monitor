@@ -6,6 +6,7 @@ pub fn ConsoleHeader(
     count: usize,
     onexport: EventHandler<MouseEvent>,
     onclear: EventHandler<MouseEvent>,
+    ontoggle_autoscroll: EventHandler<MouseEvent>,
 ) -> Element {
     rsx! {
         div { class: "shrink-0 h-6 bg-[#16181a] border-b border-[#222629] flex items-center justify-between px-3",
@@ -18,14 +19,18 @@ pub fn ConsoleHeader(
                 span { class: "text-[10px] text-gray-500 font-mono", "[ LINES: {count} / OPFS ENABLED ]" }
             }
             div { class: "flex items-center gap-2",
-                if autoscroll {
-                    div { class: "text-[9px] font-mono text-primary/60 uppercase tracking-widest flex items-center gap-1",
-                        span { class: "w-1 h-1 rounded-full bg-primary animate-pulse" }
-                        "Tracking"
-                    }
-                } else {
-                    div { class: "text-[9px] font-mono text-yellow-500/60 uppercase tracking-widest",
-                        "Paused"
+                div {
+                    class: "cursor-pointer group/tracking select-none",
+                    onclick: move |evt| ontoggle_autoscroll.call(evt),
+                    if autoscroll {
+                        div { class: "text-[9px] font-mono text-primary/60 uppercase tracking-widest flex items-center gap-1 group-hover/tracking:text-primary transition-colors",
+                            span { class: "w-1 h-1 rounded-full bg-primary animate-pulse" }
+                            "Tracking"
+                        }
+                    } else {
+                        div { class: "text-[9px] font-mono text-yellow-500/60 uppercase tracking-widest group-hover/tracking:text-yellow-500 transition-colors",
+                            "Paused"
+                        }
                     }
                 }
 

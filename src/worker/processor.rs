@@ -12,9 +12,7 @@ use wasm_bindgen::prelude::*;
 use wasm_streams::ReadableStream;
 use web_sys::{FileSystemReadWriteOptions, FileSystemSyncAccessHandle};
 
-const READ_BUFFER_SIZE: usize = 64 * 1024;
-const EXPORT_CHUNK_SIZE: u64 = 64 * 1024;
-pub const MAX_LINE_BYTES: usize = 256;
+use crate::config::{EXPORT_CHUNK_SIZE, MAX_LINE_BYTES, READ_BUFFER_SIZE};
 
 #[wasm_bindgen]
 pub struct LogProcessor {

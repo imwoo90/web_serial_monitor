@@ -1,12 +1,13 @@
 use crate::worker::processor::LogProcessor;
-use crate::worker::storage::{get_opfs_root, init_opfs_session, new_session};
+use crate::worker::storage::{get_opfs_root, init_opfs_session};
 use crate::worker::types::WorkerMsg;
 use std::cell::RefCell;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
-use wasm_bindgen::JsCast;
+
 use wasm_bindgen_futures::spawn_local;
 
+pub mod dispatcher;
 pub mod error;
 pub mod formatter;
 pub mod index;
@@ -15,11 +16,11 @@ pub mod search;
 pub mod storage;
 pub mod types;
 
-struct WorkerState {
-    proc: LogProcessor,
-    filename: Option<String>,
-    root: web_sys::FileSystemDirectoryHandle,
-    scope: web_sys::DedicatedWorkerGlobalScope,
+pub(crate) struct WorkerState {
+    pub(crate) proc: LogProcessor,
+    pub(crate) filename: Option<String>,
+    pub(crate) root: web_sys::FileSystemDirectoryHandle,
+    pub(crate) scope: web_sys::DedicatedWorkerGlobalScope,
 }
 
 impl WorkerState {
@@ -41,7 +42,7 @@ impl WorkerState {
         })
     }
 
-    fn dispatch(&mut self, msg: WorkerMsg) -> Result<(), JsValue> {
+    pub(crate) fn dispatch(&mut self, msg: WorkerMsg) -> Result<(), JsValue> {
         match msg {
             WorkerMsg::NewSession => {
                 // NewSession is handled specially in start_worker to avoid async borrow issues
@@ -91,13 +92,13 @@ impl WorkerState {
         Ok(())
     }
 
-    fn send_msg(&self, msg: WorkerMsg) {
+    pub(crate) fn send_msg(&self, msg: WorkerMsg) {
         if let Ok(s) = serde_json::to_string(&msg) {
             let _ = self.scope.post_message(&s.into());
         }
     }
 
-    fn send_error(&self, err: JsValue) {
+    pub(crate) fn send_error(&self, err: JsValue) {
         let msg = format!("{:?}", err);
         self.send_msg(WorkerMsg::Error(msg));
     }
@@ -121,49 +122,7 @@ pub fn start_worker() {
         let onmessage = {
             let s_ptr = state.clone();
             Closure::wrap(Box::new(move |event: web_sys::MessageEvent| {
-                let data = event.data();
-                let mut s = s_ptr.borrow_mut();
-
-                if let Some(msg_str) = data.as_string() {
-                    if let Ok(msg) = serde_json::from_str::<WorkerMsg>(&msg_str) {
-                        if matches!(msg, WorkerMsg::NewSession) {
-                            // Special handling for async NewSession to avoid double borrow
-                            drop(s); // release borrow before async call
-                            let s_ptr_inner = s_ptr.clone();
-                            spawn_local(async move {
-                                let (root, mut filename) = {
-                                    let s = s_ptr_inner.borrow();
-                                    (s.root.clone(), s.filename.clone())
-                                };
-                                if let Ok(lock) = new_session(&root, true, &mut filename).await {
-                                    let mut s = s_ptr_inner.borrow_mut();
-                                    s.filename = filename;
-                                    let _ = s.proc.set_sync_handle(lock);
-                                    let _ = s.proc.clear();
-                                    s.send_msg(WorkerMsg::TotalLines(0));
-                                }
-                            });
-                        } else if let Err(e) = s.dispatch(msg) {
-                            s.send_error(e);
-                        }
-                    }
-                } else if data.is_object() {
-                    let cmd = js_sys::Reflect::get(&data, &"cmd".into())
-                        .ok()
-                        .and_then(|v| v.as_string());
-                    if cmd.as_deref() == Some("AppendChunk") {
-                        if let Ok(chunk_val) = js_sys::Reflect::get(&data, &"chunk".into()) {
-                            let chunk = js_sys::Uint8Array::new(&chunk_val).to_vec();
-                            let is_hex = js_sys::Reflect::get(&data, &"is_hex".into())
-                                .ok()
-                                .and_then(|v| v.as_bool())
-                                .unwrap_or(false);
-                            if let Err(e) = s.proc.append_chunk(&chunk, is_hex) {
-                                s.send_error(e);
-                            }
-                        }
-                    }
-                }
+                dispatcher::handle_message(s_ptr.clone(), event.data());
             }) as Box<dyn FnMut(_)>)
         };
 
@@ -173,7 +132,7 @@ pub fn start_worker() {
 
         let mut last_count = 0;
         loop {
-            gloo_timers::future::TimeoutFuture::new(50).await;
+            gloo_timers::future::TimeoutFuture::new(crate::config::WORKER_STATUS_INTERVAL_MS).await;
             let current = state.borrow().proc.get_line_count();
             if current != last_count {
                 last_count = current;

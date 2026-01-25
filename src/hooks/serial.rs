@@ -1,6 +1,6 @@
 use crate::components::console::use_worker_bridge;
 use crate::serial;
-use crate::state::{AppState, ReaderWrapper, SerialPortWrapper};
+use crate::state::AppState;
 use dioxus::prelude::*;
 use gloo_timers::future::TimeoutFuture;
 use wasm_bindgen::JsCast;
@@ -11,7 +11,7 @@ pub fn use_serial_controller() -> SerialController {
     let bridge = use_worker_bridge();
 
     let connect = {
-        let mut state = state;
+        let state = state;
         let bridge = bridge;
         move || {
             spawn(async move {
@@ -36,13 +36,12 @@ pub fn use_serial_controller() -> SerialController {
                     .is_ok()
                     {
                         bridge.new_session();
-                        state.conn.port.set(Some(SerialPortWrapper(port.clone())));
-                        state.conn.is_connected.set(true);
-
                         let readable = port.readable();
                         let reader = readable.get_reader();
                         let reader: ReadableStreamDefaultReader = reader.unchecked_into();
-                        state.conn.reader.set(Some(ReaderWrapper(reader.clone())));
+                        state
+                            .conn
+                            .set_connected(Some(port.clone()), Some(reader.clone()));
 
                         state.success("Connected");
 
@@ -53,9 +52,7 @@ pub fn use_serial_controller() -> SerialController {
                                 bridge.append_chunk(&data, is_hex);
                             },
                             move |_| {
-                                state.conn.is_connected.set(false);
-                                state.conn.port.set(None);
-                                state.conn.reader.set(None);
+                                state.conn.set_connected(None, None);
                                 state.error("Connection Lost");
                             },
                         )
@@ -63,9 +60,7 @@ pub fn use_serial_controller() -> SerialController {
 
                         if (state.conn.is_connected)() {
                             if (state.conn.reader)().is_some() {
-                                state.conn.is_connected.set(false);
-                                state.conn.port.set(None);
-                                state.conn.reader.set(None);
+                                state.conn.set_connected(None, None);
                                 state.info("Connection Closed");
                             }
                         }
@@ -78,13 +73,14 @@ pub fn use_serial_controller() -> SerialController {
     };
 
     let disconnect = {
-        let mut state = state;
+        let state = state;
         move || {
             spawn(async move {
                 let maybe_reader = (state.conn.reader)();
                 let maybe_port = (state.conn.port)();
 
-                state.conn.reader.set(None);
+                let mut r = state.conn.reader;
+                r.set(None);
 
                 if let Some(reader_wrapper) = maybe_reader {
                     let _ = serial::cancel_reader(&reader_wrapper.0).await;
@@ -100,17 +96,16 @@ pub fn use_serial_controller() -> SerialController {
                     }
                 }
 
-                state.conn.port.set(None);
-                state.conn.is_connected.set(false);
+                state.conn.set_connected(None, None);
             });
         }
     };
 
     let start_simulation = {
-        let mut state = state;
+        let state = state;
         let bridge = bridge;
         move || {
-            state.conn.is_simulating.set(true);
+            state.conn.set_simulating(true);
             state.info("Simulation Started");
             bridge.clear();
 
@@ -143,10 +138,10 @@ pub fn use_serial_controller() -> SerialController {
     };
 
     let stop_simulation = {
-        let mut state = state;
+        let state = state;
         move || {
-            state.conn.is_simulating.set(false);
-            state.error("Simulation Stopped"); // Changed from info to error for some reason in original? Ah, no, let's keep info. Wait, original had info.
+            state.conn.set_simulating(false);
+            state.info("Simulation Stopped");
         }
     };
 
