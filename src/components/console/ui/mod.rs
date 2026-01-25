@@ -1,9 +1,0 @@
-pub mod filter_bar;
-pub mod header;
-pub mod input_bar;
-pub mod log_line;
-pub mod macro_bar;
-pub mod search_bar;
-pub mod transmit_bar;
-pub mod view;
-pub mod viewport;

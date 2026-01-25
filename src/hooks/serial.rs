@@ -1,4 +1,4 @@
-use crate::hooks::{use_worker_bridge, WorkerBridge};
+use crate::hooks::{use_worker_controller, WorkerController};
 use crate::state::AppState;
 use crate::utils::serial;
 use dioxus::prelude::*;
@@ -8,14 +8,14 @@ use web_sys::ReadableStreamDefaultReader;
 
 pub fn use_serial_controller() -> SerialController {
     let state = use_context::<AppState>();
-    let bridge = use_worker_bridge();
+    let bridge = use_worker_controller();
     SerialController { state, bridge }
 }
 
 #[derive(Clone, Copy)]
 pub struct SerialController {
     state: AppState,
-    bridge: WorkerBridge,
+    bridge: WorkerController,
 }
 
 impl SerialController {
@@ -24,24 +24,15 @@ impl SerialController {
         let bridge = self.bridge;
         spawn(async move {
             if let Ok(port) = serial::request_port().await {
-                let baud = (state.serial.baud_rate)().parse().unwrap_or(115200);
-                let data_bits = (state.serial.data_bits)().parse().unwrap_or(8);
-                let stop_bits = if (state.serial.stop_bits)() == "2" {
-                    2
-                } else {
-                    1
-                };
+                let baud = (state.serial.baud_rate)();
+                let data_bits = (state.serial.data_bits)();
+                let stop_bits = (state.serial.stop_bits)();
+                let parity = (state.serial.parity)().to_string();
+                let flow_control = (state.serial.flow_control)().to_string();
 
-                if serial::open_port(
-                    &port,
-                    baud,
-                    data_bits,
-                    stop_bits,
-                    (state.serial.parity)(),
-                    (state.serial.flow_control)(),
-                )
-                .await
-                .is_ok()
+                if serial::open_port(&port, baud, data_bits, stop_bits, &parity, &flow_control)
+                    .await
+                    .is_ok()
                 {
                     bridge.new_session();
                     let readable = port.readable();

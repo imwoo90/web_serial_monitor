@@ -1,10 +1,18 @@
+pub mod console_header;
+pub mod filter_bar;
 pub mod hooks;
-pub mod ui;
+pub mod input_bar;
+pub mod log_line;
+pub mod macro_bar;
+pub mod search_bar;
+pub mod transmit_bar;
 pub mod utils;
+pub mod view;
+pub mod viewport;
 
-pub use ui::filter_bar::FilterBar;
-pub use ui::input_bar::InputBar;
-pub use ui::macro_bar::MacroBar;
-pub use ui::search_bar::SearchBar;
-pub use ui::transmit_bar::TransmitBar;
-pub use ui::view::Console;
+pub use filter_bar::FilterBar;
+pub use input_bar::InputBar;
+pub use macro_bar::MacroBar;
+pub use search_bar::SearchBar;
+pub use transmit_bar::TransmitBar;
+pub use view::Console;

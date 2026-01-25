@@ -40,6 +40,40 @@ pub enum LineEnding {
     NLCR,
 }
 
+#[derive(Clone, Copy, PartialEq, Debug, Default)]
+pub enum Parity {
+    #[default]
+    None,
+    Even,
+    Odd,
+}
+
+impl ToString for Parity {
+    fn to_string(&self) -> String {
+        match self {
+            Parity::None => "none".to_string(),
+            Parity::Even => "even".to_string(),
+            Parity::Odd => "odd".to_string(),
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Debug, Default)]
+pub enum FlowControl {
+    #[default]
+    None,
+    Hardware,
+}
+
+impl ToString for FlowControl {
+    fn to_string(&self) -> String {
+        match self {
+            FlowControl::None => "none".to_string(),
+            FlowControl::Hardware => "hardware".to_string(),
+        }
+    }
+}
+
 #[derive(Clone, Copy)]
 pub struct UIState {
     pub show_settings: Signal<bool>,
@@ -51,11 +85,11 @@ pub struct UIState {
 
 #[derive(Clone, Copy)]
 pub struct SerialSettings {
-    pub baud_rate: Signal<String>,
-    pub data_bits: Signal<&'static str>,
-    pub stop_bits: Signal<&'static str>,
-    pub parity: Signal<&'static str>,
-    pub flow_control: Signal<&'static str>,
+    pub baud_rate: Signal<u32>,
+    pub data_bits: Signal<u8>,
+    pub stop_bits: Signal<u8>,
+    pub parity: Signal<Parity>,
+    pub flow_control: Signal<FlowControl>,
     pub rx_line_ending: Signal<LineEnding>,
     pub tx_line_ending: Signal<LineEnding>,
     pub tx_local_echo: Signal<bool>,
@@ -118,23 +152,23 @@ impl UIState {
 }
 
 impl SerialSettings {
-    pub fn set_baud_rate(&self, rate: String) {
+    pub fn set_baud_rate(&self, rate: u32) {
         let mut b = self.baud_rate;
         b.set(rate);
     }
-    pub fn set_data_bits(&self, bits: &'static str) {
+    pub fn set_data_bits(&self, bits: u8) {
         let mut s = self.data_bits;
         s.set(bits);
     }
-    pub fn set_stop_bits(&self, bits: &'static str) {
+    pub fn set_stop_bits(&self, bits: u8) {
         let mut s = self.stop_bits;
         s.set(bits);
     }
-    pub fn set_parity(&self, p: &'static str) {
+    pub fn set_parity(&self, p: Parity) {
         let mut s = self.parity;
         s.set(p);
     }
-    pub fn set_flow_control(&self, f: &'static str) {
+    pub fn set_flow_control(&self, f: FlowControl) {
         let mut s = self.flow_control;
         s.set(f);
     }
@@ -202,6 +236,78 @@ impl LogState {
         list.retain(|h| h.id != id);
         h.set(list);
     }
+}
+
+pub fn use_provide_app_state() -> AppState {
+    let show_settings = use_signal(|| false);
+    let show_highlights = use_signal(|| false);
+    let show_timestamps = use_signal(|| true);
+    let autoscroll = use_signal(|| true);
+    let is_hex_view = use_signal(|| false);
+
+    let baud_rate = use_signal(|| 115200u32);
+    let data_bits = use_signal(|| 8u8);
+    let stop_bits = use_signal(|| 1u8);
+    let parity = use_signal(|| Parity::None);
+    let flow_control = use_signal(|| FlowControl::None);
+    let rx_line_ending = use_signal(|| LineEnding::NL);
+    let tx_line_ending = use_signal(|| LineEnding::None);
+    let tx_local_echo = use_signal(|| false);
+
+    let port = use_signal(|| None);
+    let reader = use_signal(|| None);
+    let is_connected = use_signal(|| false);
+    let is_simulating = use_signal(|| false);
+    let log_worker = use_signal(|| None::<web_sys::Worker>);
+
+    let total_lines = use_signal(|| 0usize);
+    let visible_logs = use_signal(|| Vec::<String>::new());
+    let filter_query = use_signal(|| String::new());
+    let match_case = use_signal(|| false);
+    let use_regex = use_signal(|| false);
+    let invert_filter = use_signal(|| false);
+    let highlights = use_signal(Vec::new);
+    let toasts = use_signal(Vec::new);
+
+    let app_state = AppState {
+        ui: UIState {
+            show_settings,
+            show_highlights,
+            show_timestamps,
+            autoscroll,
+            is_hex_view,
+        },
+        serial: SerialSettings {
+            baud_rate,
+            data_bits,
+            stop_bits,
+            parity,
+            flow_control,
+            rx_line_ending,
+            tx_line_ending,
+            tx_local_echo,
+        },
+        conn: ConnectionState {
+            port,
+            reader,
+            is_connected,
+            is_simulating,
+            log_worker,
+        },
+        log: LogState {
+            total_lines,
+            visible_logs,
+            filter_query,
+            match_case,
+            use_regex,
+            invert_filter,
+            highlights,
+            toasts,
+        },
+    };
+
+    use_context_provider(|| app_state);
+    app_state
 }
 
 impl AppState {

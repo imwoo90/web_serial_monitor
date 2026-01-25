@@ -37,8 +37,8 @@ pub fn LineEndSelector(
 #[component]
 pub fn CustomSelect(
     options: Vec<&'static str>,
-    selected: Signal<&'static str>,
-    onchange: EventHandler<&'static str>,
+    selected: Signal<String>,
+    onchange: EventHandler<String>,
     #[props(default = "w-full")] class: &'static str,
     #[props(default = false)] disabled: bool,
 ) -> Element {
@@ -75,7 +75,7 @@ pub fn CustomSelect(
                             class: "w-full text-left px-3 py-2 text-[11px] font-bold transition-all duration-150",
                             class: if opt == selected() { "bg-primary/20 text-primary" } else { "text-gray-400 hover:bg-white/5 hover:text-white" },
                             onclick: move |_| {
-                                onchange.call(opt);
+                                onchange.call(opt.to_string());
                                 is_open.set(false);
                             },
                             "{opt}"

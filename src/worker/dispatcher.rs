@@ -1,40 +1,23 @@
-use crate::worker::storage::new_session;
 use crate::worker::types::WorkerMsg;
 use crate::worker::WorkerState;
 use std::cell::RefCell;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 
-use wasm_bindgen_futures::spawn_local;
-
 pub fn handle_message(state_rc: Rc<RefCell<WorkerState>>, data: JsValue) {
     let mut state = state_rc.borrow_mut();
 
     if let Some(msg_str) = data.as_string() {
         if let Ok(msg) = serde_json::from_str::<WorkerMsg>(&msg_str) {
-            match msg {
-                WorkerMsg::NewSession => {
-                    // Special handling for async NewSession to avoid double borrow
-                    drop(state); // release borrow before async call
-                    let s_ptr_inner = state_rc.clone();
-                    spawn_local(async move {
-                        let (root, mut filename) = {
-                            let s = s_ptr_inner.borrow();
-                            (s.root.clone(), s.filename.clone())
-                        };
-                        if let Ok(lock) = new_session(&root, true, &mut filename).await {
-                            let mut s = s_ptr_inner.borrow_mut();
-                            s.filename = filename;
-                            let _ = s.proc.set_sync_handle(lock);
-                            let _ = s.proc.clear();
-                            s.send_msg(WorkerMsg::TotalLines(0));
-                        }
-                    });
+            match state.dispatch(msg) {
+                Ok(false) => {
+                    // NewSession needs async handling
+                    drop(state);
+                    WorkerState::handle_new_session(state_rc);
                 }
-                _ => {
-                    if let Err(e) = state.dispatch(msg) {
-                        state.send_error(e);
-                    }
+                Ok(true) => {}
+                Err(e) => {
+                    state.send_error(e);
                 }
             }
         }

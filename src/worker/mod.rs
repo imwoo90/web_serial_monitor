@@ -42,14 +42,27 @@ impl WorkerState {
         })
     }
 
-    pub(crate) fn dispatch(&mut self, msg: WorkerMsg) -> Result<(), JsValue> {
-        match msg {
-            WorkerMsg::NewSession => {
-                // NewSession is handled specially in start_worker to avoid async borrow issues
-                return Err(
-                    "NewSession should be handled by the caller to avoid borrow issues".into(),
-                );
+    pub(crate) fn handle_new_session(state_rc: Rc<RefCell<Self>>) {
+        spawn_local(async move {
+            let (root, filename_opt) = {
+                let s = state_rc.borrow();
+                (s.root.clone(), s.filename.clone())
+            };
+            let mut filename = filename_opt;
+            if let Ok(lock) = crate::worker::storage::new_session(&root, true, &mut filename).await
+            {
+                let mut s = state_rc.borrow_mut();
+                s.filename = filename;
+                let _ = s.proc.set_sync_handle(lock);
+                let _ = s.proc.clear();
+                s.send_msg(WorkerMsg::TotalLines(0));
             }
+        });
+    }
+
+    pub(crate) fn dispatch(&mut self, msg: WorkerMsg) -> Result<bool, JsValue> {
+        match msg {
+            WorkerMsg::NewSession => return Ok(false),
             WorkerMsg::AppendChunk { chunk, is_hex } => {
                 self.proc.append_chunk(&chunk, is_hex)?;
             }
@@ -89,7 +102,7 @@ impl WorkerState {
             }
             _ => {}
         }
-        Ok(())
+        Ok(true)
     }
 
     pub(crate) fn send_msg(&self, msg: WorkerMsg) {

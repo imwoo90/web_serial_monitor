@@ -10,7 +10,7 @@ pub fn TransmitBar() -> Element {
     let mut history = use_signal(|| CommandHistory::load());
     let mut history_index = use_signal(|| None::<usize>);
     let mut is_hex_input = use_signal(|| false);
-    let bridge = crate::hooks::use_worker_bridge();
+    let bridge = crate::hooks::use_worker_controller();
 
     let on_send = move || {
         spawn(async move {

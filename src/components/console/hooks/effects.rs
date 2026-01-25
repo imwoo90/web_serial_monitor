@@ -1,8 +1,8 @@
-use crate::hooks::WorkerBridge;
+use crate::hooks::WorkerController;
 use crate::state::AppState;
 use dioxus::prelude::*;
 
-pub fn use_settings_sync(bridge: WorkerBridge) {
+pub fn use_settings_sync(bridge: WorkerController) {
     let state = use_context::<AppState>();
 
     // RX Line Ending Sync
@@ -12,7 +12,7 @@ pub fn use_settings_sync(bridge: WorkerBridge) {
     });
 }
 
-pub fn use_search_sync(bridge: WorkerBridge) {
+pub fn use_search_sync(bridge: WorkerController) {
     let state = use_context::<AppState>();
 
     use_effect(move || {

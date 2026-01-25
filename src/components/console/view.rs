@@ -1,13 +1,13 @@
 use crate::components::console::hooks::effects::{use_search_sync, use_settings_sync};
-use crate::components::console::ui::viewport::LogViewport;
-use crate::hooks::use_worker_bridge;
+use crate::components::console::viewport::LogViewport;
+use crate::hooks::use_worker_controller;
 use crate::state::AppState;
 use crate::utils::calculate_window_size;
 use dioxus::prelude::*;
 use std::rc::Rc;
 
+use crate::components::console::console_header::ConsoleHeader;
 use crate::components::console::hooks::data_request::use_data_request;
-use crate::components::console::ui::header::ConsoleHeader;
 use crate::components::console::utils::constants::{
     BOTTOM_BUFFER_EXTRA, CONSOLE_BOTTOM_PADDING, CONSOLE_TOP_PADDING, LINE_HEIGHT, TOP_BUFFER,
 };
@@ -18,7 +18,7 @@ use crate::components::console::utils::layout_utils::{
 #[component]
 pub fn Console() -> Element {
     let state = use_context::<AppState>();
-    let bridge = use_worker_bridge();
+    let bridge = use_worker_controller();
 
     let mut start_index = use_signal(|| 0usize);
     let mut console_height = use_signal(|| 600.0);
