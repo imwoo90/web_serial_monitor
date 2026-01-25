@@ -23,9 +23,9 @@ pub fn SettingsDropdown(is_open: bool, onclose: EventHandler<()>) -> Element {
                     }
                     CustomSelect {
                         options: vec!["5", "6", "7", "8"],
-                        selected: state.data_bits,
-                        onchange: move |val| state.data_bits.set(val),
-                        disabled: (state.is_connected)(),
+                        selected: state.serial.data_bits,
+                        onchange: move |val| state.serial.data_bits.set(val),
+                        disabled: (state.conn.is_connected)(),
                     }
                 }
                 div { class: "flex flex-col gap-1.5",
@@ -34,9 +34,9 @@ pub fn SettingsDropdown(is_open: bool, onclose: EventHandler<()>) -> Element {
                     }
                     CustomSelect {
                         options: vec!["1", "1.5", "2"],
-                        selected: state.stop_bits,
-                        onchange: move |val| state.stop_bits.set(val),
-                        disabled: (state.is_connected)(),
+                        selected: state.serial.stop_bits,
+                        onchange: move |val| state.serial.stop_bits.set(val),
+                        disabled: (state.conn.is_connected)(),
                     }
                 }
                 div { class: "flex flex-col gap-1.5",
@@ -45,9 +45,9 @@ pub fn SettingsDropdown(is_open: bool, onclose: EventHandler<()>) -> Element {
                     }
                     CustomSelect {
                         options: vec!["None", "Even", "Odd", "Mark", "Space"],
-                        selected: state.parity,
-                        onchange: move |val| state.parity.set(val),
-                        disabled: (state.is_connected)(),
+                        selected: state.serial.parity,
+                        onchange: move |val| state.serial.parity.set(val),
+                        disabled: (state.conn.is_connected)(),
                     }
                 }
                 div { class: "flex flex-col gap-1.5",
@@ -56,9 +56,9 @@ pub fn SettingsDropdown(is_open: bool, onclose: EventHandler<()>) -> Element {
                     }
                     CustomSelect {
                         options: vec!["None", "Hardware", "Software"],
-                        selected: state.flow_control,
-                        onchange: move |val| state.flow_control.set(val),
-                        disabled: (state.is_connected)(),
+                        selected: state.serial.flow_control,
+                        onchange: move |val| state.serial.flow_control.set(val),
+                        disabled: (state.conn.is_connected)(),
                     }
                 }
             }

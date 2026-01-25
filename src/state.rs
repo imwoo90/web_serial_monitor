@@ -41,40 +41,58 @@ pub enum LineEnding {
 }
 
 #[derive(Clone, Copy)]
-pub struct AppState {
+pub struct UIState {
     pub show_settings: Signal<bool>,
     pub show_highlights: Signal<bool>,
     pub show_timestamps: Signal<bool>,
     pub autoscroll: Signal<bool>,
-    pub line_ending: Signal<LineEnding>,
-    pub highlights: Signal<Vec<Highlight>>,
-    pub filter_query: Signal<String>,
-    pub match_case: Signal<bool>,
-    pub use_regex: Signal<bool>,
-    pub invert_filter: Signal<bool>,
-    // New Settings
+    pub is_hex_view: Signal<bool>,
+}
+
+#[derive(Clone, Copy)]
+pub struct SerialSettings {
     pub baud_rate: Signal<String>,
     pub data_bits: Signal<&'static str>,
     pub stop_bits: Signal<&'static str>,
     pub parity: Signal<&'static str>,
     pub flow_control: Signal<&'static str>,
     pub rx_line_ending: Signal<LineEnding>,
-    pub is_hex_view: Signal<bool>,
+    pub tx_line_ending: Signal<LineEnding>,
     pub tx_local_echo: Signal<bool>,
-    // Serial State
+}
+
+#[derive(Clone, Copy)]
+pub struct ConnectionState {
     pub port: Signal<Option<SerialPortWrapper>>,
     pub reader: Signal<Option<ReaderWrapper>>,
     pub is_connected: Signal<bool>,
     pub is_simulating: Signal<bool>,
     pub log_worker: Signal<Option<web_sys::Worker>>,
+}
+
+#[derive(Clone, Copy)]
+pub struct LogState {
     pub total_lines: Signal<usize>,
     pub visible_logs: Signal<Vec<String>>,
+    pub filter_query: Signal<String>,
+    pub match_case: Signal<bool>,
+    pub use_regex: Signal<bool>,
+    pub invert_filter: Signal<bool>,
+    pub highlights: Signal<Vec<Highlight>>,
     pub toasts: Signal<Vec<ToastMessage>>,
+}
+
+#[derive(Clone, Copy)]
+pub struct AppState {
+    pub ui: UIState,
+    pub serial: SerialSettings,
+    pub conn: ConnectionState,
+    pub log: LogState,
 }
 
 impl AppState {
     pub fn add_toast(&self, message: &str, type_: ToastType) {
-        let mut toasts = self.toasts;
+        let mut toasts = self.log.toasts;
         let id = js_sys::Date::now() as usize;
 
         toasts.write().push(ToastMessage {
@@ -91,7 +109,7 @@ impl AppState {
     }
 
     pub fn clear_logs(&self) {
-        let (mut total, mut visible) = (self.total_lines, self.visible_logs);
+        let (mut total, mut visible) = (self.log.total_lines, self.log.visible_logs);
         total.set(0);
         visible.set(Vec::new());
     }

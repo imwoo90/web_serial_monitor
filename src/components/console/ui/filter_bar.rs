@@ -5,11 +5,11 @@ use dioxus::prelude::*;
 #[component]
 pub fn FilterBar() -> Element {
     let mut state = use_context::<AppState>();
-    let show_highlights = (state.show_highlights)();
+    let show_highlights = (state.ui.show_highlights)();
     let mut index_open = use_signal(|| false);
 
     // RX Settings
-    let rx_ending = (state.rx_line_ending)();
+    let rx_ending = (state.serial.rx_line_ending)();
 
     rsx! {
         div { class: "shrink-0 p-2 z-10 border-b border-[#2a2e33] bg-[#0d0f10]",
@@ -21,10 +21,10 @@ pub fn FilterBar() -> Element {
                         // Timestamp Button
                         button {
                             class: "px-2 py-1 rounded text-[10px] font-bold border transition-colors select-none",
-                            class: if (state.show_timestamps)() { "bg-primary/20 text-primary border-primary/30" } else { "text-gray-500 border-transparent hover:text-gray-300 bg-[#2a2e33]/50" },
+                            class: if (state.ui.show_timestamps)() { "bg-primary/20 text-primary border-primary/30" } else { "text-gray-500 border-transparent hover:text-gray-300 bg-[#2a2e33]/50" },
                             onclick: move |_| {
-                                let v = (state.show_timestamps)();
-                                state.show_timestamps.set(!v);
+                                let v = (state.ui.show_timestamps)();
+                                state.ui.show_timestamps.set(!v);
                             },
                             "TIME"
                         }
@@ -32,8 +32,8 @@ pub fn FilterBar() -> Element {
                         // Hex View Button
                         button {
                             class: "px-2 py-1 rounded text-[10px] font-bold border transition-colors select-none",
-                            class: if (state.is_hex_view)() { "bg-primary/20 text-primary border-primary/30" } else { "text-gray-500 border-transparent hover:text-gray-300 bg-[#2a2e33]/50" },
-                            onclick: move |_| state.is_hex_view.set(!(state.is_hex_view)()),
+                            class: if (state.ui.is_hex_view)() { "bg-primary/20 text-primary border-primary/30" } else { "text-gray-500 border-transparent hover:text-gray-300 bg-[#2a2e33]/50" },
+                            onclick: move |_| state.ui.is_hex_view.set(!(state.ui.is_hex_view)()),
                             "HEX"
                         }
                     }
@@ -44,7 +44,7 @@ pub fn FilterBar() -> Element {
                     LineEndSelector {
                         label: "RX PARSE",
                         selected: rx_ending,
-                        onselect: move |val| state.rx_line_ending.set(val),
+                        onselect: move |val| state.serial.rx_line_ending.set(val),
                         active_class: "bg-emerald-500/20 text-emerald-500 border-emerald-500/20",
                         is_rx: true,
                     }
@@ -58,8 +58,8 @@ pub fn FilterBar() -> Element {
                     // TX Line Ending
                     LineEndSelector {
                         label: "TX APPEND",
-                        selected: (state.line_ending)(),
-                        onselect: move |val| state.line_ending.set(val),
+                        selected: (state.serial.tx_line_ending)(),
+                        onselect: move |val| state.serial.tx_line_ending.set(val),
                         active_class: "bg-primary/20 text-primary border-primary/20",
                         is_rx: false,
                     }
@@ -75,7 +75,7 @@ pub fn FilterBar() -> Element {
                                 let cur = index_open();
                                 index_open.set(!cur);
                                 if !cur && !show_highlights {
-                                    state.show_highlights.set(true);
+                                    state.ui.show_highlights.set(true);
                                 }
                             },
                             title: "Highlight Rules",
@@ -98,7 +98,7 @@ pub fn FilterBar() -> Element {
 #[component]
 fn HighlightPanel(visible: bool, onclose: EventHandler<()>) -> Element {
     let mut state = use_context::<AppState>();
-    let highlights = (state.highlights)();
+    let highlights = (state.log.highlights)();
 
     rsx! {
         div {
@@ -116,8 +116,8 @@ fn HighlightPanel(visible: bool, onclose: EventHandler<()>) -> Element {
                     span { class: "text-[10px] uppercase text-gray-500 font-bold", "Enable Highlighting" }
                     crate::components::common::ToggleSwitch {
                         label: "",
-                        active: (state.show_highlights)(),
-                        onclick: move |_| state.show_highlights.set(!(state.show_highlights)()),
+                        active: (state.ui.show_highlights)(),
+                        onclick: move |_| state.ui.show_highlights.set(!(state.ui.show_highlights)()),
                     }
                 }
 
@@ -131,9 +131,9 @@ fn HighlightPanel(visible: bool, onclose: EventHandler<()>) -> Element {
                             label: h.text.clone(),
                             onremove: move |_| {
                                 let mut state = use_context::<AppState>();
-                                let mut list = state.highlights.read().clone();
+                                let mut list = state.log.highlights.read().clone();
                                 list.retain(|item| item.id != h.id);
-                                state.highlights.set(list);
+                                state.log.highlights.set(list);
                             },
                         }
                     }
@@ -144,73 +144,11 @@ fn HighlightPanel(visible: bool, onclose: EventHandler<()>) -> Element {
     }
 }
 
+use crate::components::console::utils::style::get_highlight_classes;
+
 #[component]
 fn HighlightTag(color: &'static str, label: String, onremove: EventHandler<MouseEvent>) -> Element {
-    let (border_class, text_class) = match color {
-        "red" => ("border-red-500/30 hover:border-red-500/60", "text-red-400"),
-        "blue" => (
-            "border-blue-500/30 hover:border-blue-500/60",
-            "text-blue-400",
-        ),
-        "yellow" => (
-            "border-yellow-500/30 hover:border-yellow-500/60",
-            "text-yellow-400",
-        ),
-        "green" => (
-            "border-green-500/30 hover:border-green-500/60",
-            "text-green-400",
-        ),
-        "purple" => (
-            "border-purple-500/30 hover:border-purple-500/60",
-            "text-purple-400",
-        ),
-        "orange" => (
-            "border-orange-500/30 hover:border-orange-500/60",
-            "text-orange-400",
-        ),
-        "teal" => (
-            "border-teal-500/30 hover:border-teal-500/60",
-            "text-teal-400",
-        ),
-        "pink" => (
-            "border-pink-500/30 hover:border-pink-500/60",
-            "text-pink-400",
-        ),
-        "indigo" => (
-            "border-indigo-500/30 hover:border-indigo-500/60",
-            "text-indigo-400",
-        ),
-        "lime" => (
-            "border-lime-500/30 hover:border-lime-500/60",
-            "text-lime-400",
-        ),
-        "cyan" => (
-            "border-cyan-500/30 hover:border-cyan-500/60",
-            "text-cyan-400",
-        ),
-        "rose" => (
-            "border-rose-500/30 hover:border-rose-500/60",
-            "text-rose-400",
-        ),
-        "fuchsia" => (
-            "border-fuchsia-500/30 hover:border-fuchsia-500/60",
-            "text-fuchsia-400",
-        ),
-        "amber" => (
-            "border-amber-500/30 hover:border-amber-500/60",
-            "text-amber-400",
-        ),
-        "emerald" => (
-            "border-emerald-500/30 hover:border-emerald-500/60",
-            "text-emerald-400",
-        ),
-        "sky" => ("border-sky-500/30 hover:border-sky-500/60", "text-sky-400"),
-        "violet" => (
-            "border-violet-500/30 hover:border-violet-500/60",
-            "text-violet-400",
-        ),
-        _ => ("border-primary/30 hover:border-primary/60", "text-primary"),
-    };
+    let (border_class, text_class) = get_highlight_classes(color);
 
     rsx! {
         div { class: "flex items-center gap-2 pl-3 pr-2 py-1.5 bg-[#0d0f10] border {border_class} rounded-full group transition-colors",
@@ -233,7 +171,7 @@ fn HighlightInput() -> Element {
         let text = new_text.read().trim().to_string();
         if !text.is_empty() {
             let mut state = use_context::<AppState>();
-            let mut list = state.highlights.read().clone();
+            let mut list = state.log.highlights.read().clone();
 
             let used_colors: std::collections::HashSet<&str> =
                 list.iter().map(|h| h.color).collect();
@@ -249,7 +187,7 @@ fn HighlightInput() -> Element {
                 text,
                 color,
             });
-            state.highlights.set(list);
+            state.log.highlights.set(list);
             new_text.set(String::new());
         }
     };

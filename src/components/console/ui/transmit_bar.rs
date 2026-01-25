@@ -10,7 +10,7 @@ pub fn TransmitBar() -> Element {
     let mut history = use_signal(|| CommandHistory::load());
     let mut history_index = use_signal(|| None::<usize>);
     let mut is_hex_input = use_signal(|| false);
-    let bridge = crate::components::console::bridge::use_worker_bridge();
+    let bridge = crate::components::console::hooks::bridge::use_worker_bridge();
 
     let on_send = move || {
         spawn(async move {
@@ -36,7 +36,7 @@ pub fn TransmitBar() -> Element {
                 text.clone().into_bytes()
             };
 
-            let ending_ref = (state.line_ending).peek();
+            let ending_ref = (state.serial.tx_line_ending).peek();
             let ending = *ending_ref;
 
             match ending {
@@ -49,9 +49,9 @@ pub fn TransmitBar() -> Element {
                 _ => {}
             }
 
-            if let Some(wrapper) = (state.port).peek().as_ref() {
+            if let Some(wrapper) = (state.conn.port).peek().as_ref() {
                 if serial::send_data(&wrapper.0, &data).await.is_ok() {
-                    if *(state.tx_local_echo).peek() {
+                    if *(state.serial.tx_local_echo).peek() {
                         bridge.append_log(text);
                     }
                     input_value.set(String::new());
@@ -113,8 +113,8 @@ pub fn TransmitBar() -> Element {
                 div { class: "absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1",
                     button {
                         class: "px-1.5 py-0.5 rounded text-[10px] font-bold border transition-colors",
-                        class: if (state.tx_local_echo)() { "bg-emerald-500/20 text-emerald-500 border-emerald-500/30" } else { "text-gray-500 border-transparent hover:text-gray-300" },
-                        onclick: move |_| state.tx_local_echo.set(!(state.tx_local_echo)()),
+                        class: if (state.serial.tx_local_echo)() { "bg-emerald-500/20 text-emerald-500 border-emerald-500/30" } else { "text-gray-500 border-transparent hover:text-gray-300" },
+                        onclick: move |_| state.serial.tx_local_echo.set(!(state.serial.tx_local_echo)()),
                         title: "Local Echo: Show sent commands in log",
                         "ECHO"
                     }

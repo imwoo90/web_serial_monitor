@@ -61,5 +61,5 @@ impl WorkerBridge {
 
 pub fn use_worker_bridge() -> WorkerBridge {
     let state = use_context::<AppState>();
-    WorkerBridge::new(state.log_worker)
+    WorkerBridge::new(state.conn.log_worker)
 }

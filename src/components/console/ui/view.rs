@@ -1,17 +1,19 @@
-use crate::components::console::bridge::use_worker_bridge;
-use crate::components::console::effects::{use_search_sync, use_settings_sync};
-use crate::components::console::viewport::LogViewport;
+use crate::components::console::hooks::bridge::use_worker_bridge;
+use crate::components::console::hooks::effects::{use_search_sync, use_settings_sync};
+use crate::components::console::ui::viewport::LogViewport;
 use crate::state::AppState;
 use crate::utils::calculate_window_size;
 use dioxus::prelude::*;
 use std::rc::Rc;
 
-use super::constants::{
+use crate::components::console::hooks::data_request::use_data_request;
+use crate::components::console::ui::header::ConsoleHeader;
+use crate::components::console::utils::constants::{
     BOTTOM_BUFFER_EXTRA, CONSOLE_BOTTOM_PADDING, CONSOLE_TOP_PADDING, LINE_HEIGHT, TOP_BUFFER,
 };
-use super::data_request::use_data_request;
-use super::header::ConsoleHeader;
-use super::layout_utils::{calculate_scroll_state, use_auto_scroller, use_window_resize};
+use crate::components::console::utils::layout_utils::{
+    calculate_scroll_state, use_auto_scroller, use_window_resize,
+};
 
 #[component]
 pub fn Console() -> Element {
@@ -20,7 +22,7 @@ pub fn Console() -> Element {
 
     let mut start_index = use_signal(|| 0usize);
     let mut console_height = use_signal(|| 600.0);
-    let total_lines = state.total_lines;
+    let total_lines = state.log.total_lines;
 
     let window_size = calculate_window_size(
         console_height(),
@@ -48,7 +50,7 @@ pub fn Console() -> Element {
         }
 
         if start >= total {
-            if (state.autoscroll)() {
+            if (state.ui.autoscroll)() {
                 let page_size = (console_height() / LINE_HEIGHT).ceil() as usize;
                 let new_start = total.saturating_sub(page_size);
                 if start != new_start {
@@ -67,9 +69,9 @@ pub fn Console() -> Element {
         }
     });
 
-    use_window_resize(console_height, state.autoscroll, sentinel_handle);
+    use_window_resize(console_height, state.ui.autoscroll, sentinel_handle);
     use_data_request(start_index, window_size, total_lines);
-    use_auto_scroller(state.autoscroll, total_lines, sentinel_handle);
+    use_auto_scroller(state.ui.autoscroll, total_lines, sentinel_handle);
 
     let total_height =
         (total_lines() as f64) * LINE_HEIGHT + CONSOLE_TOP_PADDING + CONSOLE_BOTTOM_PADDING;
@@ -81,9 +83,9 @@ pub fn Console() -> Element {
                 div { class: "absolute inset-0 scanlines opacity-20 pointer-events-none z-10" }
 
                 ConsoleHeader {
-                    autoscroll: (state.autoscroll)(),
+                    autoscroll: (state.ui.autoscroll)(),
                     count: total_lines(),
-                    onexport: move |_| bridge.export((state.show_timestamps)()),
+                    onexport: move |_| bridge.export((state.ui.show_timestamps)()),
                     onclear: move |_| {
                         bridge.clear();
                         state.clear_logs();
@@ -118,8 +120,8 @@ pub fn Console() -> Element {
                                     if start_index() != new_index {
                                         start_index.set(new_index);
                                     }
-                                    if (state.autoscroll)() != is_at_bottom {
-                                        state.autoscroll.set(is_at_bottom);
+                                    if (state.ui.autoscroll)() != is_at_bottom {
+                                        state.ui.autoscroll.set(is_at_bottom);
                                     }
                                 }
                             }
@@ -128,8 +130,8 @@ pub fn Console() -> Element {
                     onmounted_sentinel: move |evt: MountedEvent| sentinel_handle.set(Some(evt.data())),
                 }
 
-                if !(state.autoscroll)() {
-                    ResumeScrollButton { onclick: move |_| state.autoscroll.set(true) }
+                if !(state.ui.autoscroll)() {
+                    ResumeScrollButton { onclick: move |_| state.ui.autoscroll.set(true) }
                 }
             }
         }

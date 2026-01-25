@@ -29,7 +29,7 @@ pub fn MacroBar() -> Element {
                 cmd.into_bytes()
             };
 
-            match (state.line_ending)() {
+            match (state.serial.tx_line_ending)() {
                 LineEnding::NL => data.push(b'\n'),
                 LineEnding::CR => data.push(b'\r'),
                 LineEnding::NLCR => {
@@ -38,7 +38,7 @@ pub fn MacroBar() -> Element {
                 }
                 _ => {}
             }
-            if let Some(wrapper) = (state.port)() {
+            if let Some(wrapper) = (state.conn.port)() {
                 let _ = serial::send_data(&wrapper.0, &data).await;
             }
         });

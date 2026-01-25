@@ -6,14 +6,14 @@ use wasm_bindgen::JsCast;
 
 pub fn use_log_worker(mut state: AppState) {
     use_effect(move || {
-        if state.log_worker.read().is_none() {
+        if state.conn.log_worker.read().is_none() {
             let script_path = crate::worker::get_app_script_path();
             let options = web_sys::WorkerOptions::new();
             options.set_type(web_sys::WorkerType::Module);
 
             if let Ok(worker) = web_sys::Worker::new_with_options(&script_path, &options) {
-                let mut tl = state.total_lines;
-                let mut vl = state.visible_logs;
+                let mut tl = state.log.total_lines;
+                let mut vl = state.log.visible_logs;
 
                 let callback = Closure::wrap(Box::new(move |event: web_sys::MessageEvent| {
                     let data = event.data();
@@ -53,15 +53,15 @@ pub fn use_log_worker(mut state: AppState) {
 
                 worker.set_onmessage(Some(callback.as_ref().unchecked_ref()));
                 callback.forget();
-                state.log_worker.set(Some(worker));
+                state.conn.log_worker.set(Some(worker));
             }
         }
     });
 
     // RX Line Ending Sync
     use_effect(move || {
-        let ending = (state.rx_line_ending)();
-        if let Some(w) = state.log_worker.read().as_ref() {
+        let ending = (state.serial.rx_line_ending)();
+        if let Some(w) = state.conn.log_worker.read().as_ref() {
             let mode_str = match ending {
                 crate::state::LineEnding::None => "None",
                 crate::state::LineEnding::NL => "NL",

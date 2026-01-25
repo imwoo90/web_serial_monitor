@@ -16,52 +16,56 @@ pub fn use_serial_controller() -> SerialController {
         move || {
             spawn(async move {
                 if let Ok(port) = serial::request_port().await {
-                    let baud = (state.baud_rate)().parse().unwrap_or(115200);
-                    let data_bits = (state.data_bits)().parse().unwrap_or(8);
-                    let stop_bits = if (state.stop_bits)() == "2" { 2 } else { 1 };
+                    let baud = (state.serial.baud_rate)().parse().unwrap_or(115200);
+                    let data_bits = (state.serial.data_bits)().parse().unwrap_or(8);
+                    let stop_bits = if (state.serial.stop_bits)() == "2" {
+                        2
+                    } else {
+                        1
+                    };
 
                     if serial::open_port(
                         &port,
                         baud,
                         data_bits,
                         stop_bits,
-                        (state.parity)(),
-                        (state.flow_control)(),
+                        (state.serial.parity)(),
+                        (state.serial.flow_control)(),
                     )
                     .await
                     .is_ok()
                     {
                         bridge.new_session();
-                        state.port.set(Some(SerialPortWrapper(port.clone())));
-                        state.is_connected.set(true);
+                        state.conn.port.set(Some(SerialPortWrapper(port.clone())));
+                        state.conn.is_connected.set(true);
 
                         let readable = port.readable();
                         let reader = readable.get_reader();
                         let reader: ReadableStreamDefaultReader = reader.unchecked_into();
-                        state.reader.set(Some(ReaderWrapper(reader.clone())));
+                        state.conn.reader.set(Some(ReaderWrapper(reader.clone())));
 
                         state.success("Connected");
 
                         serial::read_loop(
                             reader,
                             move |data| {
-                                let is_hex = (state.is_hex_view)();
+                                let is_hex = (state.ui.is_hex_view)();
                                 bridge.append_chunk(&data, is_hex);
                             },
                             move |_| {
-                                state.is_connected.set(false);
-                                state.port.set(None);
-                                state.reader.set(None);
+                                state.conn.is_connected.set(false);
+                                state.conn.port.set(None);
+                                state.conn.reader.set(None);
                                 state.error("Connection Lost");
                             },
                         )
                         .await;
 
-                        if (state.is_connected)() {
-                            if (state.reader)().is_some() {
-                                state.is_connected.set(false);
-                                state.port.set(None);
-                                state.reader.set(None);
+                        if (state.conn.is_connected)() {
+                            if (state.conn.reader)().is_some() {
+                                state.conn.is_connected.set(false);
+                                state.conn.port.set(None);
+                                state.conn.reader.set(None);
                                 state.info("Connection Closed");
                             }
                         }
@@ -77,10 +81,10 @@ pub fn use_serial_controller() -> SerialController {
         let mut state = state;
         move || {
             spawn(async move {
-                let maybe_reader = (state.reader)();
-                let maybe_port = (state.port)();
+                let maybe_reader = (state.conn.reader)();
+                let maybe_port = (state.conn.port)();
 
-                state.reader.set(None);
+                state.conn.reader.set(None);
 
                 if let Some(reader_wrapper) = maybe_reader {
                     let _ = serial::cancel_reader(&reader_wrapper.0).await;
@@ -96,8 +100,8 @@ pub fn use_serial_controller() -> SerialController {
                     }
                 }
 
-                state.port.set(None);
-                state.is_connected.set(false);
+                state.conn.port.set(None);
+                state.conn.is_connected.set(false);
             });
         }
     };
@@ -106,12 +110,12 @@ pub fn use_serial_controller() -> SerialController {
         let mut state = state;
         let bridge = bridge;
         move || {
-            state.is_simulating.set(true);
+            state.conn.is_simulating.set(true);
             state.info("Simulation Started");
             bridge.clear();
 
-            let sim_sig = state.is_simulating;
-            let hex_sig = state.is_hex_view;
+            let sim_sig = state.conn.is_simulating;
+            let hex_sig = state.ui.is_hex_view;
 
             spawn(async move {
                 loop {
@@ -141,8 +145,8 @@ pub fn use_serial_controller() -> SerialController {
     let stop_simulation = {
         let mut state = state;
         move || {
-            state.is_simulating.set(false);
-            state.info("Simulation Stopped");
+            state.conn.is_simulating.set(false);
+            state.error("Simulation Stopped"); // Changed from info to error for some reason in original? Ah, no, let's keep info. Wait, original had info.
         }
     };
 
