@@ -38,7 +38,7 @@ impl LogProcessor {
 
     // --- Public API ---
     pub fn get_line_count(&self) -> u32 {
-        self.repository.index.get_total_count() as u32
+        self.repository.get_line_count() as u32
     }
 
     pub fn set_line_ending(&mut self, mode: &str) {
@@ -62,7 +62,7 @@ impl LogProcessor {
         self.repository.storage.backend.handle = Some(handle);
         let size = self.repository.storage.backend.get_file_size()?;
         if size.0 > 0 {
-            self.repository.index.reset_base();
+            self.repository.reset_index();
             let (mut off, mut buf) = (ByteOffset(0), vec![0u8; READ_BUFFER_SIZE]);
             while off.0 < size.0 {
                 let len = (size.0 - off.0).min(buf.len() as u64) as usize;
@@ -149,8 +149,6 @@ impl LogProcessor {
         Ok(self.get_line_count())
     }
 
-
-
     pub fn clear(&mut self) -> Result<(), JsValue> {
         self.clear_internal().map_err(JsValue::from)
     }
@@ -160,7 +158,6 @@ impl LogProcessor {
         self.chunk_handler.clear();
         Ok(())
     }
-
 
     fn decode_with_streaming(&self, chunk: &[u8]) -> Result<String, LogError> {
         let opts = web_sys::TextDecodeOptions::new();

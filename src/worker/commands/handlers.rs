@@ -56,12 +56,10 @@ impl WorkerCommand for RequestWindowCommand {
         let repo = &state.proc.repository;
 
         for i in s..e {
-            if let Some(range) = repo.index.get_line_range(LineIndex(i)) {
-                let mut buf = vec![0u8; (range.end.0 - range.start.0) as usize];
-                repo.storage
-                    .backend
-                    .read_at(range.start, &mut buf)
-                    .map_err(LogError::from)?;
+            if let Some(range) = repo.get_line_range(LineIndex(i)) {
+                let buf = repo
+                    .read_line(range)
+                    .map_err(|e| JsValue::from(LogError::from(e)))?;
 
                 let text = repo
                     .storage
