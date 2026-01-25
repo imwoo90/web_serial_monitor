@@ -99,7 +99,7 @@ impl SerialController {
         let state = self.state;
         let bridge = self.bridge;
         state.conn.set_simulating(true);
-        state.info("Simulation Started");
+        state.success("Simulation Started");
         bridge.clear();
 
         let sim_sig = state.conn.is_simulating;
@@ -131,6 +131,6 @@ impl SerialController {
 
     pub fn stop_simulation(&self) {
         self.state.conn.set_simulating(false);
-        self.state.info("Simulation Stopped");
+        self.state.warning("Simulation Stopped");
     }
 }

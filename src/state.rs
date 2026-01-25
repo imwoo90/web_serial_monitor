@@ -279,4 +279,7 @@ impl AppState {
     pub fn info(&self, msg: &str) {
         self.add_toast(msg, ToastType::Info);
     }
+    pub fn warning(&self, msg: &str) {
+        self.add_toast(msg, ToastType::Warning);
+    }
 }

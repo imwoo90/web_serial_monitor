@@ -4,6 +4,7 @@ use dioxus::prelude::*;
 pub enum ToastType {
     Info,
     Success,
+    Warning,
     Error,
 }
 
@@ -23,11 +24,13 @@ pub fn ToastContainer(toasts: Signal<Vec<ToastMessage>>) -> Element {
                     let type_class = match toast.type_ {
                         ToastType::Info => "bg-[#16181a] border border-gray-700 text-gray-300",
                         ToastType::Success => "bg-[#0d1f12] border border-green-900 text-green-400",
+                        ToastType::Warning => "bg-[#1f1a0d] border border-yellow-900 text-yellow-400",
                         ToastType::Error => "bg-[#1f0d0d] border border-red-900 text-red-400",
                     };
                     let icon = match toast.type_ {
                         ToastType::Info => "info",
                         ToastType::Success => "check_circle",
+                        ToastType::Warning => "warning",
                         ToastType::Error => "error",
                     };
 
