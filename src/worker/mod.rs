@@ -11,6 +11,7 @@ pub mod error;
 pub mod formatter;
 pub mod index;
 pub mod processor;
+pub mod search;
 pub mod storage;
 pub mod types;
 

@@ -30,6 +30,7 @@ pub struct LineRange {
 #[derive(Clone)]
 pub struct ActiveFilter {
     pub query: String,
+    pub query_lower: String,
     pub match_case: bool,
     pub regex: Option<Regex>,
     pub invert: bool,
@@ -79,8 +80,15 @@ impl ActiveFilterBuilder {
             None
         };
 
+        let query_lower = if !self.match_case {
+            self.query.to_lowercase()
+        } else {
+            String::new()
+        };
+
         Ok(ActiveFilter {
             query: self.query,
+            query_lower,
             match_case: self.match_case,
             regex,
             invert: self.invert,
@@ -95,7 +103,10 @@ impl ActiveFilter {
         } else if self.match_case {
             text.contains(&self.query)
         } else {
-            text.to_lowercase().contains(&self.query.to_lowercase())
+            // Optimization: Use pre-calculated lowercased query
+            // optimization: In the future, we could avoid text.to_lowercase() allocation
+            // by using a case-insensitive search iterator, but for now strict structure fix.
+            text.to_lowercase().contains(&self.query_lower)
         };
         if self.invert {
             !matched

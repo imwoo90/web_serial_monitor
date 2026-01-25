@@ -3,7 +3,8 @@ use crate::worker::error::LogError;
 use crate::worker::formatter::{
     DefaultFormatter, HexFormatter, LogFormatter, LogFormatterStrategy,
 };
-use crate::worker::index::{ActiveFilterBuilder, ByteOffset, LineIndex, LineRange, LogIndex};
+use crate::worker::index::{ByteOffset, LineIndex, LineRange, LogIndex};
+use crate::worker::search::LogSearcher;
 use crate::worker::storage::{LogStorage, StorageBackend};
 
 use std::borrow::Cow;
@@ -12,7 +13,6 @@ use wasm_streams::ReadableStream;
 use web_sys::{FileSystemReadWriteOptions, FileSystemSyncAccessHandle};
 
 const READ_BUFFER_SIZE: usize = 64 * 1024;
-const SEARCH_BATCH_SIZE: usize = 5000;
 const EXPORT_CHUNK_SIZE: u64 = 64 * 1024;
 pub const MAX_LINE_BYTES: usize = 256;
 
@@ -164,73 +164,15 @@ impl LogProcessor {
         regex: bool,
         invert: bool,
     ) -> Result<u32, JsValue> {
-        self.search_logs_internal(query, case, regex, invert)
-            .map_err(JsValue::from)
-    }
-
-    fn search_logs_internal(
-        &mut self,
-        query: String,
-        case: bool,
-        regex: bool,
-        invert: bool,
-    ) -> Result<u32, LogError> {
-        if query.trim().is_empty() {
-            return self.reset_filter_internal();
-        }
-
-        self.index.active_filter = Some(
-            ActiveFilterBuilder::new(query)
-                .case_sensitive(case)
-                .regex(regex)
-                .invert(invert)
-                .build()
-                .map_err(LogError::Regex)?,
-        );
-        self.index.is_filtering = true;
-        self.index.filtered_lines.clear();
-
-        let total_lines = self.index.line_count;
-        let mut buf = vec![0u8; 512 * 1024];
-        let mut idx = 0;
-
-        while idx < total_lines {
-            let batch_end = (idx + SEARCH_BATCH_SIZE).min(total_lines);
-            let (s_off, e_off) = {
-                let off = &self.index.line_offsets;
-                (off[idx], off[batch_end])
-            };
-            let size = (e_off.0 - s_off.0) as usize;
-            if buf.len() < size {
-                buf.resize(size, 0);
-            }
-            self.storage.backend.read_at(s_off, &mut buf[..size])?;
-
-            let text = self
-                .storage
-                .decoder
-                .decode_with_u8_array(&buf[..size])
-                .map_err(LogError::Js)?;
-            let filter = self
-                .index
-                .active_filter
-                .as_ref()
-                .ok_or_else(|| LogError::Regex("Filter missing during search".into()))?
-                .clone();
-
-            for (j, line) in text.trim_end_matches('\n').split('\n').enumerate() {
-                if filter.matches(line) {
-                    let off_ptr = &self.index.line_offsets;
-                    let range = LineRange {
-                        start: off_ptr[idx + j],
-                        end: off_ptr[idx + j + 1],
-                    };
-                    self.index.push_filtered(range);
-                }
-            }
-            idx = batch_end;
-        }
-        Ok(self.index.filtered_lines.len() as u32)
+        LogSearcher::search(
+            &mut self.storage,
+            &mut self.index,
+            query,
+            case,
+            regex,
+            invert,
+        )
+        .map_err(JsValue::from)
     }
 
     pub fn clear(&mut self) -> Result<(), JsValue> {
@@ -356,38 +298,80 @@ impl LogProcessor {
 
         for line in raw_lines {
             let cleaned = formatter.clean_line_ending(line);
-
-            // 2. Sub-split if this line itself is too long
-            let mut start = 0;
-            while start < cleaned.len() {
-                let end = (start + max_len).min(cleaned.len());
-                let sub_line = &cleaned[start..end];
-
-                let start_pos = batch.len();
-                let formatted = formatter.format(sub_line, &timestamp);
-                batch.push_str(&formatted);
-                let line_len = (batch.len() - start_pos) as u64;
-
-                if self.index.is_filtering
-                    && self
-                        .index
-                        .active_filter
-                        .as_ref()
-                        .is_some_and(|f| f.matches(&batch[start_pos..]))
-                {
-                    filtered.push(LineRange {
-                        start: relative_offset,
-                        end: relative_offset + line_len,
-                    });
-                }
-
-                relative_offset = relative_offset + line_len;
-                offsets.push(relative_offset);
-                start = end;
-            }
+            self.process_single_line(
+                cleaned,
+                formatter,
+                &timestamp,
+                &mut batch,
+                &mut offsets,
+                &mut filtered,
+                &mut relative_offset,
+            );
         }
 
         (batch, offsets, filtered)
+    }
+
+    fn process_single_line(
+        &self,
+        line: &str,
+        formatter: &dyn LogFormatterStrategy,
+        timestamp: &str,
+        batch: &mut String,
+        offsets: &mut Vec<ByteOffset>,
+        filtered: &mut Vec<LineRange>,
+        current_relative_offset: &mut ByteOffset,
+    ) {
+        let max_len = formatter.max_line_length();
+        let mut start = 0;
+
+        // Handle empty line case (if any, though split usually gives empty str for consecutive delims)
+        if line.is_empty() {
+            let start_pos = batch.len();
+            let formatted = formatter.format("", timestamp);
+            batch.push_str(&formatted);
+            let line_len = (batch.len() - start_pos) as u64;
+
+            if self.is_filter_match(&batch[start_pos..]) {
+                filtered.push(LineRange {
+                    start: *current_relative_offset,
+                    end: *current_relative_offset + line_len,
+                });
+            }
+            *current_relative_offset = *current_relative_offset + line_len;
+            offsets.push(*current_relative_offset);
+            return;
+        }
+
+        while start < line.len() {
+            let end = (start + max_len).min(line.len());
+            let sub_line = &line[start..end];
+
+            let start_pos = batch.len();
+            let formatted = formatter.format(sub_line, timestamp);
+            batch.push_str(&formatted);
+            let line_len = (batch.len() - start_pos) as u64;
+
+            if self.is_filter_match(&batch[start_pos..]) {
+                filtered.push(LineRange {
+                    start: *current_relative_offset,
+                    end: *current_relative_offset + line_len,
+                });
+            }
+
+            *current_relative_offset = *current_relative_offset + line_len;
+            offsets.push(*current_relative_offset);
+            start = end;
+        }
+    }
+
+    fn is_filter_match(&self, text: &str) -> bool {
+        self.index.is_filtering
+            && self
+                .index
+                .active_filter
+                .as_ref()
+                .is_some_and(|f| f.matches(text))
     }
 
     fn decode_with_streaming_internal(&self, chunk: &[u8]) -> Result<String, JsValue> {
@@ -396,10 +380,5 @@ impl LogProcessor {
         self.storage
             .decoder
             .decode_with_u8_array_and_options(chunk, &opts)
-    }
-
-    fn reset_filter_internal(&mut self) -> Result<u32, LogError> {
-        self.index.clear_filter();
-        Ok(self.index.line_count as u32)
     }
 }
