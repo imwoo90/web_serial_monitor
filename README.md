@@ -37,7 +37,7 @@ Unlike typical web serial tools, this project leverages **OPFS (Origin Private F
 This project uses a hybrid architecture to maximize performance in a browser environment.
 
 *   **Main Thread (Rust/Dioxus)**: Handles UI rendering, State Management (Signals), and Serial Port I/O.
-*   **Web Worker (JavaScript)**: Manages heavy I/O tasks.
+*   **Web Worker (Rust)**: Manages heavy I/O tasks.
     *   **OPFS**: Writes logs to a virtual file system for persistence.
     *   **Search Engine**: Performs reverse/forward scanning for filtering.
     *   **Throttling**: Batches UI updates (max 20fps) to prevent main thread blocking during high-load data ingestion.
@@ -46,7 +46,7 @@ This project uses a hybrid architecture to maximize performance in a browser env
 graph TD
     User["User / Serial Device"] -->|Data Stream| Main["Main Thread (Rust)"]
     Main -->|Virtual DOM| Browser["Browser UI"]
-    Main -->|PostMessage| Worker["Log Worker (JS)"]
+    Main -->|PostMessage| Worker["Log Worker (Rust)"]
     Worker -->|SyncAccessHandle| OPFS["OPFS Storage"]
     Worker -->|Filtered View| Main
 ```
