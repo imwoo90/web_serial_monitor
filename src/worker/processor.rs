@@ -13,8 +13,8 @@ use web_sys::{FileSystemReadWriteOptions, FileSystemSyncAccessHandle, TextDecode
 
 const READ_BUFFER_SIZE: usize = 64 * 1024;
 const SEARCH_BATCH_SIZE: usize = 5000;
-const LEFTOVER_FLUSH_LIMIT: usize = 4096;
 const EXPORT_CHUNK_SIZE: u64 = 64 * 1024;
+pub const MAX_LINE_BYTES: usize = 256;
 
 struct LogStorage {
     backend: OpfsBackend,
@@ -100,10 +100,14 @@ impl LogProcessor {
 
     pub fn append_chunk(&mut self, chunk: &[u8], is_hex: bool) -> Result<u32, JsValue> {
         let formatter: Box<dyn LogFormatterStrategy> = if is_hex {
-            Box::new(HexFormatter)
+            Box::new(HexFormatter {
+                line_ending: self.formatter.line_ending_mode,
+                max_bytes: MAX_LINE_BYTES,
+            })
         } else {
             Box::new(DefaultFormatter {
                 line_ending: self.formatter.line_ending_mode,
+                max_bytes: MAX_LINE_BYTES,
             })
         };
 
@@ -327,7 +331,10 @@ impl LogProcessor {
         chunk: &str,
         formatter: &dyn LogFormatterStrategy,
     ) -> (String, Vec<ByteOffset>, Vec<LineRange>) {
-        if !self.leftover_chunk.is_empty() && self.leftover_chunk.len() > LEFTOVER_FLUSH_LIMIT {
+        let max_len = formatter.max_line_length();
+
+        // 1. If leftover is already too long, force a split before even adding new chunk
+        if !self.leftover_chunk.is_empty() && self.leftover_chunk.len() >= max_len {
             self.leftover_chunk.push('\n');
         }
 
@@ -337,43 +344,53 @@ impl LogProcessor {
             Cow::Owned(format!("{}{}", self.leftover_chunk, chunk))
         };
 
-        let mut lines: Vec<&str> = match self.formatter.line_ending_mode {
+        let mut raw_lines: Vec<&str> = match self.formatter.line_ending_mode {
             LineEnding::None | LineEnding::NL => full_text.split('\n'),
             LineEnding::CR => full_text.split('\x0D'),
             LineEnding::NLCR => full_text.split('\n'),
         }
         .collect();
 
-        self.leftover_chunk = lines.pop().unwrap_or("").to_string();
+        // The last part is the new leftover
+        self.leftover_chunk = raw_lines.pop().unwrap_or("").to_string();
 
-        let mut batch = String::with_capacity(chunk.len() * 2);
-        let mut offsets = Vec::with_capacity(lines.len());
+        let mut batch = String::with_capacity(full_text.len() * 2);
+        let mut offsets = Vec::with_capacity(raw_lines.len());
         let mut filtered = Vec::new();
         let mut relative_offset = ByteOffset(0);
         let timestamp = self.formatter.get_timestamp();
 
-        for line in lines {
+        for line in raw_lines {
             let cleaned = formatter.clean_line_ending(line);
-            let start_pos = batch.len();
-            let formatted = formatter.format(cleaned, &timestamp);
-            batch.push_str(&formatted);
-            let line_len = (batch.len() - start_pos) as u64;
 
-            if self.index.is_filtering
-                && self
-                    .index
-                    .active_filter
-                    .as_ref()
-                    .map_or(false, |f| f.matches(&batch[start_pos..]))
-            {
-                filtered.push(LineRange {
-                    start: relative_offset,
-                    end: relative_offset + line_len,
-                });
+            // 2. Sub-split if this line itself is too long
+            let mut start = 0;
+            while start < cleaned.len() {
+                let end = (start + max_len).min(cleaned.len());
+                let sub_line = &cleaned[start..end];
+
+                let start_pos = batch.len();
+                let formatted = formatter.format(sub_line, &timestamp);
+                batch.push_str(&formatted);
+                let line_len = (batch.len() - start_pos) as u64;
+
+                if self.index.is_filtering
+                    && self
+                        .index
+                        .active_filter
+                        .as_ref()
+                        .map_or(false, |f| f.matches(&batch[start_pos..]))
+                {
+                    filtered.push(LineRange {
+                        start: relative_offset,
+                        end: relative_offset + line_len,
+                    });
+                }
+
+                relative_offset = relative_offset + line_len;
+                offsets.push(relative_offset);
+                start = end;
             }
-
-            relative_offset = relative_offset + line_len;
-            offsets.push(relative_offset);
         }
 
         (batch, offsets, filtered)
