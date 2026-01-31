@@ -48,7 +48,7 @@ pub fn SettingsDropdown(is_open: bool, onclose: EventHandler<()>) -> Element {
                                 state.serial.set_data_bits(b);
                             }
                         },
-                        disabled: (state.conn.is_connected)(),
+                        disabled: state.conn.is_connected(),
                     }
                 }
                 div { class: "flex flex-col gap-1.5",
@@ -63,7 +63,7 @@ pub fn SettingsDropdown(is_open: bool, onclose: EventHandler<()>) -> Element {
                                 state.serial.set_stop_bits(b);
                             }
                         },
-                        disabled: (state.conn.is_connected)(),
+                        disabled: state.conn.is_connected(),
                     }
                 }
                 div { class: "flex flex-col gap-1.5",
@@ -81,7 +81,7 @@ pub fn SettingsDropdown(is_open: bool, onclose: EventHandler<()>) -> Element {
                             };
                             state.serial.set_parity(p);
                         },
-                        disabled: (state.conn.is_connected)(),
+                        disabled: state.conn.is_connected(),
                     }
                 }
                 div { class: "flex flex-col gap-1.5",
@@ -98,7 +98,7 @@ pub fn SettingsDropdown(is_open: bool, onclose: EventHandler<()>) -> Element {
                             };
                             state.serial.set_flow_control(f);
                         },
-                        disabled: (state.conn.is_connected)(),
+                        disabled: state.conn.is_connected(),
                     }
                 }
             }

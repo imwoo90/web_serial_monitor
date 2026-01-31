@@ -14,24 +14,24 @@ pub fn use_serial_controller() -> SerialController {
         let reader = (state.conn.reader)();
         let bridge = bridge;
         async move {
-            if let Some(reader_wrapper) = reader {
-                crate::utils::serial_api::read_loop(
-                    reader_wrapper.0,
-                    move |data| {
-                        let is_hex = (state.ui.is_hex_view)();
-                        bridge.append_chunk(&data, is_hex);
-                    },
-                    move |_| {
-                        state.conn.set_connected(None, None);
-                        state.error("Connection Lost");
-                    },
-                )
-                .await;
+            let Some(reader_wrapper) = reader else { return };
 
-                if (state.conn.is_connected)() && (state.conn.reader)().is_some() {
+            crate::utils::serial_api::read_loop(
+                reader_wrapper,
+                move |data| {
+                    let is_hex = (state.ui.is_hex_view)();
+                    bridge.append_chunk(&data, is_hex);
+                },
+                move |_| {
                     state.conn.set_connected(None, None);
-                    state.info("Connection Closed");
-                }
+                    state.error("Connection Lost");
+                },
+            )
+            .await;
+
+            if state.conn.is_connected() && (state.conn.reader)().is_some() {
+                state.conn.set_connected(None, None);
+                state.info("Connection Closed");
             }
         }
     });
@@ -78,57 +78,52 @@ impl SerialController {
         let state = self.state;
         let bridge = self.bridge;
         spawn(async move {
-            if let Ok(port) = crate::utils::serial_api::request_port().await {
-                let baud = (state.serial.baud_rate)();
-                let data_bits = (state.serial.data_bits)();
-                let stop_bits = (state.serial.stop_bits)();
-                let parity = (state.serial.parity)().to_string();
-                let flow_control = (state.serial.flow_control)().to_string();
+            let Ok(port) = crate::utils::serial_api::request_port().await else {
+                return;
+            };
 
-                if crate::utils::serial_api::open_port(
-                    &port,
-                    baud,
-                    data_bits,
-                    stop_bits,
-                    &parity,
-                    &flow_control,
-                )
-                .await
-                .is_ok()
-                {
-                    bridge.new_session();
-                    let readable = port.readable();
-                    let reader = readable.get_reader();
-                    let reader: ReadableStreamDefaultReader = reader.unchecked_into();
-                    state
-                        .conn
-                        .set_connected(Some(port.clone()), Some(reader.clone()));
+            if crate::utils::serial_api::open_port(
+                &port,
+                (state.serial.baud_rate)(),
+                (state.serial.data_bits)(),
+                (state.serial.stop_bits)(),
+                &(state.serial.parity)().to_string(),
+                &(state.serial.flow_control)().to_string(),
+            )
+            .await
+            .is_err()
+            {
+                state.error("Failed to Open Port");
+                return;
+            };
 
-                    state.success("Connected");
-                } else {
-                    state.error("Failed to Open Port");
-                }
-            }
+            bridge.new_session();
+            let readable = port.readable();
+            let reader = readable.get_reader();
+            let reader: ReadableStreamDefaultReader = reader.unchecked_into();
+            state
+                .conn
+                .set_connected(Some(port.clone()), Some(reader.clone()));
+            state.success("Connected");
         });
     }
 
     pub fn disconnect(&self) {
-        let state = self.state;
+        let mut state = self.state;
         spawn(async move {
             let maybe_reader = (state.conn.reader)();
             let maybe_port = (state.conn.port)();
 
-            let mut r = state.conn.reader;
-            r.set(None);
+            state.conn.reader.set(None);
 
             if let Some(reader_wrapper) = maybe_reader {
-                let _ = crate::utils::serial_api::cancel_reader(&reader_wrapper.0).await;
+                let _ = crate::utils::serial_api::cancel_reader(&reader_wrapper).await;
             }
 
             TimeoutFuture::new(100).await;
 
-            if let Some(wrapper) = maybe_port {
-                if crate::utils::serial_api::close_port(&wrapper.0)
+            if let Some(conn_port) = maybe_port {
+                if crate::utils::serial_api::close_port(&conn_port)
                     .await
                     .is_ok()
                 {

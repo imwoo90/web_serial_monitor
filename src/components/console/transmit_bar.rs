@@ -48,8 +48,8 @@ pub fn TransmitBar() -> Element {
                 _ => {}
             }
 
-            if let Some(wrapper) = port {
-                if serial::send_data(&wrapper.0, &data).await.is_ok() {
+            if let Some(conn_port) = port {
+                if serial::send_data(&conn_port, &data).await.is_ok() {
                     if local_echo {
                         bridge.append_log(text.clone());
                     }

@@ -4,27 +4,6 @@ use dioxus::prelude::*;
 use gloo_timers::future::TimeoutFuture;
 use web_sys::{ReadableStreamDefaultReader, SerialPort};
 
-#[derive(Clone, Debug)]
-pub struct SerialPortWrapper(pub SerialPort);
-// Safety: In WASM, we are single-threaded. Dioxus requires Send/Sync for Context, but we know it's local.
-unsafe impl Send for SerialPortWrapper {}
-unsafe impl Sync for SerialPortWrapper {}
-impl PartialEq for SerialPortWrapper {
-    fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct ReaderWrapper(pub ReadableStreamDefaultReader);
-unsafe impl Send for ReaderWrapper {}
-unsafe impl Sync for ReaderWrapper {}
-impl PartialEq for ReaderWrapper {
-    fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0
-    }
-}
-
 #[derive(Clone, Copy)]
 pub struct UIState {
     pub show_settings: Signal<bool>,
@@ -48,9 +27,8 @@ pub struct SerialSettings {
 
 #[derive(Clone, Copy)]
 pub struct ConnectionState {
-    pub port: Signal<Option<SerialPortWrapper>>,
-    pub reader: Signal<Option<ReaderWrapper>>,
-    pub is_connected: Signal<bool>,
+    pub port: Signal<Option<SerialPort>>,
+    pub reader: Signal<Option<ReadableStreamDefaultReader>>,
     pub is_simulating: Signal<bool>,
     pub log_worker: Signal<Option<web_sys::Worker>>,
 }
@@ -126,22 +104,21 @@ impl SerialSettings {
 }
 
 impl ConnectionState {
+    pub fn is_connected(&self) -> bool {
+        self.port.read().is_some()
+    }
+
     pub fn set_connected(
         &self,
         port: Option<SerialPort>,
         reader: Option<ReadableStreamDefaultReader>,
     ) {
-        let mut p = self.port;
-        let mut r = self.reader;
-        let mut c = self.is_connected;
-        p.set(port.map(SerialPortWrapper));
-        r.set(reader.map(ReaderWrapper));
-        c.set(p.read().is_some());
+        { self.port }.set(port);
+        { self.reader }.set(reader);
     }
 
     pub fn set_simulating(&self, simulating: bool) {
-        let mut s = self.is_simulating;
-        s.set(simulating);
+        { self.is_simulating }.set(simulating);
     }
 }
 
@@ -207,7 +184,6 @@ pub fn use_provide_app_state() -> AppState {
 
     let port = use_signal(|| None);
     let reader = use_signal(|| None);
-    let is_connected = use_signal(|| false);
     let is_simulating = use_signal(|| false);
     let log_worker = use_signal(|| None::<web_sys::Worker>);
 
@@ -241,7 +217,6 @@ pub fn use_provide_app_state() -> AppState {
         conn: ConnectionState {
             port,
             reader,
-            is_connected,
             is_simulating,
             log_worker,
         },

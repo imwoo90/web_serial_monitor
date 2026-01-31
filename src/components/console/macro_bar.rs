@@ -45,8 +45,8 @@ pub fn MacroBar() -> Element {
                     }
                     _ => {}
                 }
-                if let Some(wrapper) = port {
-                    let _ = serial::send_data(&wrapper.0, &data).await;
+                if let Some(conn_port) = port {
+                    let _ = serial::send_data(&conn_port, &data).await;
                 }
             }
         }
@@ -83,7 +83,7 @@ pub fn MacroBar() -> Element {
 
             // GitHub Link (Moved from Footer)
             div { class: "shrink-0 flex items-center gap-4 ml-auto px-2",
-                 a {
+                a {
                     class: "text-gray-500 hover:text-primary transition-colors flex items-center gap-1.5 group text-[11px]",
                     href: "https://github.com/imwoo90/web_serial_monitor",
                     target: "_blank",
