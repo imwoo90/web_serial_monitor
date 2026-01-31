@@ -55,51 +55,40 @@ pub struct AppState {
 
 impl UIState {
     pub fn toggle_settings(&self) {
-        let mut s = self.show_settings;
-        s.set(!s());
+        { self.show_settings }.toggle();
     }
     pub fn toggle_highlights(&self) {
-        let mut s = self.show_highlights;
-        s.set(!s());
+        { self.show_highlights }.toggle();
     }
     pub fn toggle_timestamps(&self) {
-        let mut s = self.show_timestamps;
-        s.set(!s());
+        { self.show_timestamps }.toggle();
     }
     pub fn toggle_autoscroll(&self) {
-        let mut s = self.autoscroll;
-        s.set(!s());
+        { self.autoscroll }.toggle();
     }
     pub fn set_autoscroll(&self, value: bool) {
-        let mut s = self.autoscroll;
-        s.set(value);
+        { self.autoscroll }.set(value);
     }
     pub fn toggle_hex_view(&self) {
-        let mut s = self.is_hex_view;
-        s.set(!s());
+        { self.is_hex_view }.toggle();
     }
 }
 
 impl SerialSettings {
     pub fn set_baud_rate(&self, rate: u32) {
-        let mut b = self.baud_rate;
-        b.set(rate);
+        { self.baud_rate }.set(rate);
     }
     pub fn set_data_bits(&self, bits: u8) {
-        let mut s = self.data_bits;
-        s.set(bits);
+        { self.data_bits }.set(bits);
     }
     pub fn set_stop_bits(&self, bits: u8) {
-        let mut s = self.stop_bits;
-        s.set(bits);
+        { self.stop_bits }.set(bits);
     }
     pub fn set_parity(&self, p: Parity) {
-        let mut s = self.parity;
-        s.set(p);
+        { self.parity }.set(p);
     }
     pub fn set_flow_control(&self, f: FlowControl) {
-        let mut s = self.flow_control;
-        s.set(f);
+        { self.flow_control }.set(f);
     }
 }
 
@@ -124,10 +113,8 @@ impl ConnectionState {
 
 impl LogState {
     pub fn clear(&self) {
-        let mut t = self.total_lines;
-        let mut v = self.visible_logs;
-        t.set(0);
-        v.set(Vec::new());
+        { self.total_lines }.set(0);
+        { self.visible_logs }.set(Vec::new());
     }
 
     pub fn add_toast(&self, message: &str, type_: ToastType) {
@@ -147,88 +134,55 @@ impl LogState {
     }
 
     pub fn add_highlight(&self, text: String, color: &'static str) {
-        let mut h = self.highlights;
-        let mut list = h.read().clone();
-        let next_id = list.iter().map(|h| h.id).max().unwrap_or(0) + 1;
+        let mut highlights = self.highlights;
+        let mut list = highlights.write();
+        let next_id = list.last().map(|h| h.id).unwrap_or(0) + 1;
         list.push(Highlight {
             id: next_id,
             text,
             color,
         });
-        h.set(list);
     }
 
     pub fn remove_highlight(&self, id: usize) {
-        let mut h = self.highlights;
-        let mut list = h.read().clone();
-        list.retain(|h| h.id != id);
-        h.set(list);
+        { self.highlights }.write().retain(|h| h.id != id);
     }
 }
 
 pub fn use_provide_app_state() -> AppState {
-    let show_settings = use_signal(|| false);
-    let show_highlights = use_signal(|| false);
-    let show_timestamps = use_signal(|| true);
-    let autoscroll = use_signal(|| true);
-    let is_hex_view = use_signal(|| false);
-
-    let baud_rate = use_signal(|| 115200u32);
-    let data_bits = use_signal(|| 8u8);
-    let stop_bits = use_signal(|| 1u8);
-    let parity = use_signal(|| Parity::None);
-    let flow_control = use_signal(|| FlowControl::None);
-    let rx_line_ending = use_signal(|| LineEnding::NL);
-    let tx_line_ending = use_signal(|| LineEnding::None);
-    let tx_local_echo = use_signal(|| false);
-
-    let port = use_signal(|| None);
-    let reader = use_signal(|| None);
-    let is_simulating = use_signal(|| false);
-    let log_worker = use_signal(|| None::<web_sys::Worker>);
-
-    let total_lines = use_signal(|| 0usize);
-    let visible_logs = use_signal(Vec::<(usize, String)>::new);
-    let filter_query = use_signal(String::new);
-    let match_case = use_signal(|| false);
-    let use_regex = use_signal(|| false);
-    let invert_filter = use_signal(|| false);
-    let highlights = use_signal(Vec::new);
-    let toasts = use_signal(Vec::new);
-
     let app_state = AppState {
         ui: UIState {
-            show_settings,
-            show_highlights,
-            show_timestamps,
-            autoscroll,
-            is_hex_view,
+            show_settings: use_signal(|| false),
+            show_highlights: use_signal(|| false),
+            show_timestamps: use_signal(|| true),
+            autoscroll: use_signal(|| true),
+            is_hex_view: use_signal(|| false),
         },
         serial: SerialSettings {
-            baud_rate,
-            data_bits,
-            stop_bits,
-            parity,
-            flow_control,
-            rx_line_ending,
-            tx_line_ending,
-            tx_local_echo,
+            baud_rate: use_signal(|| 115200u32),
+            data_bits: use_signal(|| 8u8),
+            stop_bits: use_signal(|| 1u8),
+            parity: use_signal(|| Parity::None),
+            flow_control: use_signal(|| FlowControl::None),
+            rx_line_ending: use_signal(|| LineEnding::NL),
+            tx_line_ending: use_signal(|| LineEnding::None),
+            tx_local_echo: use_signal(|| false),
         },
         conn: ConnectionState {
-            port,
-            reader,
-            is_simulating,
-            log_worker,
+            port: use_signal(|| None),
+            reader: use_signal(|| None),
+            is_simulating: use_signal(|| false),
+            log_worker: use_signal(|| None::<web_sys::Worker>),
         },
         log: LogState {
-            total_lines,
-            visible_logs,
-            filter_query,
-            match_case,
-            use_regex,
-            invert_filter,
-            highlights,
-            toasts,
+            total_lines: use_signal(|| 0usize),
+            visible_logs: use_signal(Vec::<(usize, String)>::new),
+            filter_query: use_signal(String::new),
+            match_case: use_signal(|| false),
+            use_regex: use_signal(|| false),
+            invert_filter: use_signal(|| false),
+            highlights: use_signal(Vec::new),
+            toasts: use_signal(Vec::new),
         },
     };
 
