@@ -86,9 +86,19 @@ pub async fn read_loop(
                 }
             }
             Err(e) => {
-                on_error(format!("Read error: {:?}", e));
-                reader.release_lock();
-                break;
+                let err_str = format!("{:?}", e);
+                // Check for fatal errors that require closing the connection
+                // "NetworkError" is the standard DOMException for lost device
+                // "The device has been lost" is the common message text
+                if err_str.contains("NetworkError") || err_str.contains("device has been lost") {
+                    on_error(format!("Fatal Error: {:?}", e));
+                    reader.release_lock();
+                    break;
+                } else {
+                    // Non-fatal errors (Framing, Parity, Break, BufferOverrun)
+                    // Just log warning and continue reading
+                    web_sys::console::warn_1(&format!("Non-fatal read error: {:?}", e).into());
+                }
             }
         }
     }

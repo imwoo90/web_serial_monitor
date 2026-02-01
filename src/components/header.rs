@@ -4,7 +4,7 @@ use dioxus::prelude::*;
 #[component]
 pub fn Header() -> Element {
     rsx! {
-        header { class: "shrink-0 h-18 p-2 flex items-center z-20 relative border-b border-[#2a2e33] bg-[#0d0f10]",
+        header { class: "shrink-0 h-18 p-2 flex items-center z-30 relative border-b border-[#2a2e33] bg-[#0d0f10]",
             div { class: "flex gap-3 items-center w-full min-w-[600px]",
                 // --- Left: Brand (Aligns with Filter Input: flex-[1.3]) ---
                 div { class: "flex-[1.3] flex items-center gap-3 min-w-0 pl-2",

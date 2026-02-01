@@ -19,12 +19,12 @@ pub fn ConnectionControl() -> Element {
     rsx! {
         div { class: "flex items-center gap-3 h-full",
             // Port Info
-            PortStatus { connected: (state.conn.is_connected)() }
+            PortStatus { connected: state.conn.is_connected() }
 
             // Baud Rate
             BaudRatePicker {
                 baud_rate: state.serial.baud_rate,
-                disabled: (state.conn.is_connected)(),
+                disabled: state.conn.is_connected(),
                 onchange: move |val| state.serial.set_baud_rate(val),
             }
 
@@ -38,7 +38,6 @@ pub fn ConnectionControl() -> Element {
                 title: "Settings",
             }
 
-            // Test Mode Button
             // Test Mode Button
             if cfg!(debug_assertions) {
                 button {
@@ -57,24 +56,26 @@ pub fn ConnectionControl() -> Element {
 
             // Connect Button
             button {
-                class: if (state.conn.is_connected)() { "group relative flex items-center gap-2 bg-red-500/80 hover:bg-red-500 border border-red-500/50 pl-3 pr-4 py-1.5 rounded-lg transition-all duration-300 active:scale-95 shadow-lg shadow-red-500/20 ml-2" } else { "group relative flex items-center gap-2 bg-primary hover:bg-primary-hover border border-primary/50 pl-3 pr-4 py-1.5 rounded-lg transition-all duration-300 active:scale-95 shadow-lg shadow-primary/20 ml-2" },
+                class: if state.conn.is_connected() { "group relative flex items-center gap-2 bg-red-500/80 hover:bg-red-500 border border-red-500/50 pl-3 pr-4 py-1.5 rounded-lg transition-all duration-300 active:scale-95 shadow-lg shadow-red-500/20 ml-2" } else { "group relative flex items-center gap-2 bg-primary hover:brightness-110 border border-primary/50 pl-3 pr-4 py-1.5 rounded-lg transition-all duration-300 active:scale-95 shadow-lg shadow-primary/20 ml-2" },
                 onclick: move |_| {
-                    if (state.conn.is_connected)() {
+                    if state.conn.is_connected() {
                         controller.disconnect();
                     } else {
                         controller.connect();
                     }
                 },
                 div { class: "relative flex h-2 w-2",
-                    span {
-                        class: "animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-white",
-                    }
+                    span { class: "animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-white" }
                     span { class: "relative inline-flex rounded-full h-2 w-2 bg-white" }
                 }
                 span {
                     class: "text-xs font-bold transition-colors uppercase tracking-wide",
-                    class: if (state.conn.is_connected)() { "text-white" } else { "text-black group-hover:text-black/80" },
-                    if (state.conn.is_connected)() { "Disconnect" } else { "Connect" }
+                    class: if state.conn.is_connected() { "text-white" } else { "text-black group-hover:text-black/80" },
+                    if state.conn.is_connected() {
+                        "Disconnect"
+                    } else {
+                        "Connect"
+                    }
                 }
             }
 

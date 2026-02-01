@@ -12,17 +12,19 @@ pub fn TransmitBar() -> Element {
     let mut is_hex_input = use_signal(|| false);
     let bridge = crate::hooks::use_worker_controller();
 
-    let on_send = move || {
-        spawn(async move {
-            let text = input_value();
+    let mut send_task = use_resource(move || {
+        let text = input_value();
+        let is_hex = is_hex_input();
+        let ending = *(state.serial.tx_line_ending).peek();
+        let local_echo = *(state.serial.tx_local_echo).peek();
+        let port = (state.conn.port).peek().as_ref().cloned();
+
+        async move {
             if text.is_empty() {
                 return;
             }
 
-            history.write().add(text.clone());
-            history_index.set(None);
-
-            let mut data = if is_hex_input() {
+            let mut data = if is_hex {
                 match parse_hex_string(&text) {
                     Ok(d) => d,
                     Err(e) => {
@@ -36,9 +38,6 @@ pub fn TransmitBar() -> Element {
                 text.clone().into_bytes()
             };
 
-            let ending_ref = (state.serial.tx_line_ending).peek();
-            let ending = *ending_ref;
-
             match ending {
                 LineEnding::NL => data.push(b'\n'),
                 LineEnding::CR => data.push(b'\r'),
@@ -49,16 +48,18 @@ pub fn TransmitBar() -> Element {
                 _ => {}
             }
 
-            if let Some(wrapper) = (state.conn.port).peek().as_ref() {
-                if serial::send_data(&wrapper.0, &data).await.is_ok() {
-                    if *(state.serial.tx_local_echo).peek() {
-                        bridge.append_log(text);
+            if let Some(conn_port) = port {
+                if serial::send_data(&conn_port, &data).await.is_ok() {
+                    if local_echo {
+                        bridge.append_log(text.clone());
                     }
                     input_value.set(String::new());
+                    history.write().add(text);
+                    history_index.set(None);
                 }
             }
-        });
-    };
+        }
+    });
 
     rsx! {
         div { class: "flex-1 relative flex gap-2 min-w-0",
@@ -77,7 +78,7 @@ pub fn TransmitBar() -> Element {
                     },
                     onkeydown: move |evt| {
                         match evt.key() {
-                            Key::Enter => on_send(),
+                            Key::Enter => send_task.restart(),
                             Key::ArrowUp => {
                                 let h = history.read();
                                 if h.len() > 0 {
@@ -130,7 +131,7 @@ pub fn TransmitBar() -> Element {
 
             button {
                 class: "h-full aspect-square bg-primary text-surface rounded-lg flex items-center justify-center hover:bg-white transition-all hover:shadow-[0_0_15px_rgba(255,255,255,0.4)] active:scale-95 group",
-                onclick: move |_| on_send(),
+                onclick: move |_| send_task.restart(),
                 span { class: "material-symbols-outlined text-[20px] group-hover:rotate-45 transition-transform duration-300",
                     "send"
                 }

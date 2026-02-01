@@ -13,36 +13,44 @@ pub fn MacroBar() -> Element {
     let mut new_cmd = use_signal(String::new);
     let mut new_hex = use_signal(|| false);
 
-    let send_cmd = move |cmd: String, is_hex: bool| {
-        spawn(async move {
-            let mut data = if is_hex {
-                match parse_hex_string(&cmd) {
-                    Ok(d) => d,
-                    Err(e) => {
-                        if let Some(w) = web_sys::window() {
-                            let _ = w.alert_with_message(&format!("Macro Hex Error: {}", e));
-                        }
-                        return;
-                    }
-                }
-            } else {
-                cmd.into_bytes()
-            };
+    let mut current_macro = use_signal(|| None::<(String, bool)>);
 
-            match (state.serial.tx_line_ending)() {
-                LineEnding::NL => data.push(b'\n'),
-                LineEnding::CR => data.push(b'\r'),
-                LineEnding::NLCR => {
-                    data.push(b'\r');
-                    data.push(b'\n');
+    let mut macro_task = use_resource(move || {
+        let macro_data = current_macro();
+        let port = (state.conn.port).peek().as_ref().cloned();
+        let ending = (state.serial.tx_line_ending)();
+
+        async move {
+            if let Some((cmd, is_hex)) = macro_data {
+                let mut data = if is_hex {
+                    match parse_hex_string(&cmd) {
+                        Ok(d) => d,
+                        Err(e) => {
+                            if let Some(w) = web_sys::window() {
+                                let _ = w.alert_with_message(&format!("Macro Hex Error: {}", e));
+                            }
+                            return;
+                        }
+                    }
+                } else {
+                    cmd.into_bytes()
+                };
+
+                match ending {
+                    LineEnding::NL => data.push(b'\n'),
+                    LineEnding::CR => data.push(b'\r'),
+                    LineEnding::NLCR => {
+                        data.push(b'\r');
+                        data.push(b'\n');
+                    }
+                    _ => {}
                 }
-                _ => {}
+                if let Some(conn_port) = port {
+                    let _ = serial::send_data(&conn_port, &data).await;
+                }
             }
-            if let Some(wrapper) = (state.conn.port)() {
-                let _ = serial::send_data(&wrapper.0, &data).await;
-            }
-        });
-    };
+        }
+    });
 
     rsx! {
         div { class: "flex gap-2 p-2 bg-background-dark border-t border-[#2a2e33] min-h-[40px] items-center overflow-x-auto",
@@ -51,7 +59,10 @@ pub fn MacroBar() -> Element {
                     button {
                         key: "{item.id}",
                         class: "shrink-0 px-3 py-1 bg-[#2a2e33] hover:bg-primary hover:text-white rounded text-xs font-mono transition-colors border border-gray-700 select-none whitespace-nowrap",
-                        onclick: move |_| send_cmd(item.command.clone(), item.is_hex),
+                        onclick: move |_| {
+                            current_macro.set(Some((item.command.clone(), item.is_hex)));
+                            macro_task.restart();
+                        },
                         oncontextmenu: move |evt| {
                             evt.prevent_default();
                             storage.write().remove(item.id);
@@ -72,7 +83,7 @@ pub fn MacroBar() -> Element {
 
             // GitHub Link (Moved from Footer)
             div { class: "shrink-0 flex items-center gap-4 ml-auto px-2",
-                 a {
+                a {
                     class: "text-gray-500 hover:text-primary transition-colors flex items-center gap-1.5 group text-[11px]",
                     href: "https://github.com/imwoo90/web_serial_monitor",
                     target: "_blank",

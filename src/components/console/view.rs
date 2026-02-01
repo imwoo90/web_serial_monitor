@@ -6,7 +6,6 @@ use dioxus::prelude::*;
 
 use crate::components::console::console_header::ConsoleHeader;
 use crate::components::console::hooks::virtual_scroll::use_virtual_scroll;
-use crate::components::console::utils::layout_utils::calculate_scroll_state;
 
 #[component]
 pub fn Console() -> Element {
@@ -40,43 +39,23 @@ pub fn Console() -> Element {
                     total_height: vs.total_height,
                     offset_top: vs.offset_top,
                     onmounted_console: move |evt: MountedEvent| {
-                        let handle = evt.data();
-                        let h_clone = handle.clone();
-                        spawn(async move {
-                            if let Ok(rect) = h_clone.get_client_rect().await {
-                                vs.console_height.set(rect.height());
-                            }
-                        });
-                        vs.console_handle.set(Some(handle));
+                        vs.console_handle.set(Some(evt.data()));
                     },
                     onscroll: move |_: ScrollEvent| {
-                        let handle = vs.console_handle.peek().as_ref().cloned();
-                        let total_lines = (state.log.total_lines)();
-                        spawn(async move {
-                            if let Some(handle) = handle {
-                                if let Ok(offset) = handle.get_scroll_offset().await {
-                                    let (new_index, is_at_bottom) = calculate_scroll_state(
-                                        offset.y,
-                                        *vs.console_height.read(),
-                                        total_lines,
-                                        vs.scale_factor,
-                                        vs.total_height,
-                                    );
-                                    if (vs.start_index)() != new_index {
-                                        vs.start_index.set(new_index);
-                                    }
-                                    if (state.ui.autoscroll)() != is_at_bottom {
-                                        state.ui.set_autoscroll(is_at_bottom);
-                                    }
-                                }
-                            }
-                        });
+                        vs.scroll_task.restart();
                     },
                     onmounted_sentinel: move |evt: MountedEvent| vs.sentinel_handle.set(Some(evt.data())),
                 }
 
                 if !(state.ui.autoscroll)() {
-                    ResumeScrollButton { onclick: move |_| state.ui.set_autoscroll(true) }
+                    ResumeScrollButton {
+                        onclick: move |_| {
+                            web_sys::window()
+                                .and_then(|win| win.document())
+                                .and_then(|doc| doc.get_element_by_id("console-output"))
+                                .map(|el| el.set_scroll_top(el.scroll_height()));
+                        },
+                    }
                 }
             }
         }
