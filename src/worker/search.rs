@@ -43,32 +43,32 @@ impl LogSearcher {
             )
         };
 
-        let mut idx = 0;
+        let mut idx = total_lines;
         let mut buf = vec![0u8; 512 * 1024];
 
-        while idx < total_lines {
-            // Check for cancellation
+        while idx > 0 {
             if state_rc.borrow().current_search_id != search_id {
                 return Ok(());
             }
 
-            let batch_end = (idx + SEARCH_BATCH_SIZE).min(total_lines);
+            let batch_start = idx.saturating_sub(SEARCH_BATCH_SIZE);
+            let batch_end = idx;
 
             {
                 let mut state = state_rc.borrow_mut();
                 let repo = &mut state.proc.repository;
 
-                // Ensure index consistency
+                // Ensure index consistency (if cleared during search)
                 if batch_end > repo.index.line_count {
-                    // Lines might have been cleared or changed
                     break;
                 }
 
                 let (s_off, e_off) = {
                     let off = &repo.index.line_offsets;
-                    (off[idx], off[batch_end])
+                    (off[batch_start], off[batch_end])
                 };
                 let size = (e_off.0 - s_off.0) as usize;
+
                 if buf.len() < size {
                     buf.resize(size, 0);
                 }
@@ -82,24 +82,27 @@ impl LogSearcher {
                     .map_err(LogError::Js)?;
 
                 let filter = repo.index.active_filter.as_ref().unwrap().clone();
+                let mut batch_matches = Vec::new();
 
                 for (j, line) in text.trim_end_matches('\n').split('\n').enumerate() {
                     if filter.matches(line) {
                         let off_ptr = &repo.index.line_offsets;
-                        if idx + j + 1 < off_ptr.len() {
+                        let abs_line_idx = batch_start + j;
+
+                        if abs_line_idx + 1 < off_ptr.len() {
                             let range = LineRange {
-                                start: off_ptr[idx + j],
-                                end: off_ptr[idx + j + 1],
+                                start: off_ptr[abs_line_idx],
+                                end: off_ptr[abs_line_idx + 1],
                             };
-                            repo.index.push_filtered(range);
+                            batch_matches.push(range);
                         }
                     }
                 }
+                state.proc.repository.index.prepend_filtered(batch_matches);
             }
 
-            idx = batch_end;
-            // Yield to allow other messages and status updates
-            TimeoutFuture::new(0).await;
+            idx = batch_start;
+            TimeoutFuture::new(16).await;
         }
         Ok(())
     }

@@ -36,6 +36,14 @@ impl LogIndex {
         self.filtered_lines.push(range);
     }
 
+    pub fn prepend_filtered(&mut self, ranges: Vec<LineRange>) {
+        if self.filtered_lines.is_empty() {
+            self.filtered_lines = ranges;
+        } else {
+            self.filtered_lines.splice(0..0, ranges);
+        }
+    }
+
     pub fn get_total_count(&self) -> usize {
         if self.is_filtering {
             self.filtered_lines.len()
