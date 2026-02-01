@@ -22,16 +22,18 @@ pub fn use_serial_controller() -> SerialController {
                     let is_hex = (state.ui.is_hex_view)();
                     bridge.append_chunk(&data, is_hex);
                 },
-                move |_| {
-                    state.conn.set_connected(None, None);
-                    state.error("Connection Lost");
+                move |err_msg| {
+                    state.error(&format!("Connection Lost: {}", err_msg));
+                    spawn(async move {
+                        cleanup_serial_connection(state).await;
+                    });
                 },
             )
             .await;
 
             if state.conn.is_connected() && (state.conn.reader)().is_some() {
-                state.conn.set_connected(None, None);
                 state.info("Connection Closed");
+                cleanup_serial_connection(state).await;
             }
         }
     });
@@ -96,31 +98,10 @@ impl SerialController {
     }
 
     pub fn disconnect(&self) {
-        let mut state = self.state;
+        let state = self.state;
         spawn(async move {
-            let maybe_reader = (state.conn.reader)();
-            let maybe_port = (state.conn.port)();
-
-            state.conn.reader.set(None);
-
-            if let Some(reader_wrapper) = maybe_reader {
-                let _ = crate::utils::serial_api::cancel_reader(&reader_wrapper).await;
-            }
-
-            TimeoutFuture::new(100).await;
-
-            if let Some(conn_port) = maybe_port {
-                if crate::utils::serial_api::close_port(&conn_port)
-                    .await
-                    .is_ok()
-                {
-                    state.info("Disconnected");
-                } else {
-                    state.error("Failed to close port");
-                }
-            }
-
-            state.conn.set_connected(None, None);
+            cleanup_serial_connection(state).await;
+            state.info("Disconnected");
         });
     }
 
@@ -135,4 +116,35 @@ impl SerialController {
         self.state.warning("Simulation Stopped");
         self.disconnect();
     }
+}
+
+/// Helper to cleanup serial connection (Reader + Port) safely
+async fn cleanup_serial_connection(mut state: AppState) {
+    let maybe_reader = (state.conn.reader)();
+    let maybe_port = (state.conn.port)();
+
+    // 1. Reset Reader state immediately to stop potential re-entry
+    state.conn.reader.set(None);
+
+    // 2. Cancel Reader if exists
+    if let Some(reader_wrapper) = maybe_reader {
+        let _ = crate::utils::serial_api::cancel_reader(&reader_wrapper).await;
+    }
+
+    // 3. Close Port if exists
+    // Small delay to ensure reader lock is released properly by browser
+    TimeoutFuture::new(100).await;
+
+    if let Some(conn_port) = maybe_port {
+        if crate::utils::serial_api::close_port(&conn_port)
+            .await
+            .is_err()
+        {
+            // Log error if needed, but we proceed to reset state anyway
+            web_sys::console::warn_1(&"Failed to close port cleanly".into());
+        }
+    }
+
+    // 4. Final State Reset
+    state.conn.set_connected(None, None);
 }
