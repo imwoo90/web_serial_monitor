@@ -43,9 +43,13 @@ impl SerialController {
         if (state.conn.is_busy)() {
             return;
         }
+        // Lock immediately to prevent double-click / race conditions
+        state.conn.set_busy(true);
+
         let bridge = self.bridge;
         spawn(async move {
             let Ok(port) = crate::utils::serial_api::request_port().await else {
+                state.conn.set_busy(false);
                 return;
             };
 
@@ -61,6 +65,7 @@ impl SerialController {
             .is_err()
             {
                 state.error("Failed to Open Port");
+                state.conn.set_busy(false);
                 return;
             };
 
@@ -70,6 +75,7 @@ impl SerialController {
             start_read_task(state, bridge, port);
 
             state.success("Connected");
+            state.conn.set_busy(false);
         });
     }
 
@@ -79,10 +85,13 @@ impl SerialController {
         if (state.conn.is_busy)() {
             return;
         }
+        // Lock immediately to prevent double-click
+        state.conn.set_busy(true);
 
         spawn(async move {
             cleanup_serial_connection(state).await;
             state.info("Disconnected");
+            state.conn.set_busy(false);
         });
     }
 
@@ -99,13 +108,10 @@ impl SerialController {
     }
 }
 
-/// Helper to cleanup serial connection (Reader + Port) safely
+// Helper to cleanup serial connection (Reader + Port) safely
 async fn cleanup_serial_connection(state: AppState) {
-    // Avoid double cleanup or cleanup while connecting
-    if (state.conn.is_busy)() {
-        return;
-    }
-    state.conn.set_busy(true);
+    // Note: Caller must have set busy=true before calling this
+
     // Yield to let UI update and previous events settle
     TimeoutFuture::new(50).await;
 
@@ -142,7 +148,7 @@ async fn cleanup_serial_connection(state: AppState) {
 
     // 4. Final State Reset
     state.conn.set_connected(None, None);
-    state.conn.set_busy(false);
+    // state.conn.set_busy(false); // Caller is now responsible for setting busy to false
 }
 
 /// Starts an explicit read task that handles the serial read loop and retries
@@ -177,21 +183,34 @@ fn start_read_task(state: AppState, bridge: WorkerController, port: web_sys::Ser
         match status {
             ReadStatus::Retry => {
                 // Prevent hot-looping on continuous errors (e.g. wrong baud rate)
-                // Give UI enough time to process events (like Disconnect click)
                 TimeoutFuture::new(100).await;
 
-                // Recursive restart (spawn new task)
+                // If busy (e.g. user clicked disconnect), stop retrying
+                if (state.conn.is_busy)() {
+                    return;
+                }
+
+                // Recursive restart
                 start_read_task(state, bridge, port);
             }
             ReadStatus::Done => {
                 if state.conn.is_connected() {
-                    state.info("Connection Closed");
-                    cleanup_serial_connection(state).await;
+                    // If already busy, someone else (Disconnect button) is handling cleanup
+                    if !(state.conn.is_busy)() {
+                        state.conn.set_busy(true);
+                        state.info("Connection Closed");
+                        cleanup_serial_connection(state).await;
+                        state.conn.set_busy(false); // Release busy lock
+                    }
                 }
             }
             ReadStatus::Fatal(msg) => {
-                state.error(&format!("Connection Lost: {}", msg));
-                cleanup_serial_connection(state).await;
+                if !(state.conn.is_busy)() {
+                    state.conn.set_busy(true);
+                    state.error(&format!("Connection Lost: {}", msg));
+                    cleanup_serial_connection(state).await;
+                    state.conn.set_busy(false); // Release busy lock
+                }
             }
         }
     });
