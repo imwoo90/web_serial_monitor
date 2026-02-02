@@ -105,7 +105,7 @@ pub fn CustomInputSelect(
 
                 // Input field for custom value
                 input {
-                    class: "w-full bg-transparent border-none text-xs font-bold text-gray-300 py-2 pl-3 outline-none placeholder-gray-600",
+                    class: if disabled { "w-full bg-transparent border-none text-xs font-bold text-gray-300 py-2 pl-3 outline-none placeholder-gray-600 cursor-not-allowed" } else { "w-full bg-transparent border-none text-xs font-bold text-gray-300 py-2 pl-3 outline-none placeholder-gray-600" },
                     value: "{selected}",
                     disabled: "{disabled}",
                     oninput: move |evt| {
@@ -116,7 +116,7 @@ pub fn CustomInputSelect(
 
                 // Dropdown trigger button
                 button {
-                    class: "flex items-center justify-center px-2 py-2 cursor-pointer outline-none border-l border-[#2a2e33]",
+                    class: if disabled { "flex items-center justify-center px-2 py-2 outline-none border-l border-[#2a2e33] cursor-not-allowed" } else { "flex items-center justify-center px-2 py-2 outline-none border-l border-[#2a2e33] cursor-pointer" },
                     disabled: "{disabled}",
                     onclick: move |e| {
                         if !disabled {
