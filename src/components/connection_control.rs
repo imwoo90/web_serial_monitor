@@ -22,11 +22,7 @@ pub fn ConnectionControl() -> Element {
             PortStatus { connected: state.conn.is_connected() }
 
             // Baud Rate
-            BaudRatePicker {
-                baud_rate: state.serial.baud_rate,
-                disabled: state.conn.is_connected(),
-                onchange: move |val| state.serial.set_baud_rate(val),
-            }
+            BaudRatePicker {}
 
             // Settings Button
             IconButton {

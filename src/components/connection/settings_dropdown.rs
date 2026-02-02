@@ -6,24 +6,7 @@ use dioxus::prelude::*;
 pub fn SettingsDropdown(is_open: bool, onclose: EventHandler<()>) -> Element {
     let state = use_context::<AppState>();
 
-    let data_bits_str = use_signal(move || (state.serial.data_bits)().to_string());
-    let stop_bits_str = use_signal(move || {
-        let s = (state.serial.stop_bits)();
-        if s == 1 {
-            "1".to_string()
-        } else {
-            "2".to_string()
-        }
-    });
-    let parity_str = use_signal(move || match (state.serial.parity)() {
-        crate::state::Parity::None => "None".to_string(),
-        crate::state::Parity::Even => "Even".to_string(),
-        crate::state::Parity::Odd => "Odd".to_string(),
-    });
-    let flow_str = use_signal(move || match (state.serial.flow_control)() {
-        crate::state::FlowControl::None => "None".to_string(),
-        crate::state::FlowControl::Hardware => "Hardware".to_string(),
-    });
+    // Signals removed, using direct state access in rsx!
 
     rsx! {
         if is_open {
@@ -42,7 +25,7 @@ pub fn SettingsDropdown(is_open: bool, onclose: EventHandler<()>) -> Element {
                     }
                     CustomSelect {
                         options: vec!["5", "6", "7", "8"],
-                        selected: data_bits_str,
+                        selected: (state.serial.data_bits)().to_string(),
                         onchange: move |val: String| {
                             if let Ok(b) = val.parse::<u8>() {
                                 state.serial.set_data_bits(b);
@@ -57,7 +40,7 @@ pub fn SettingsDropdown(is_open: bool, onclose: EventHandler<()>) -> Element {
                     }
                     CustomSelect {
                         options: vec!["1", "2"],
-                        selected: stop_bits_str,
+                        selected: if (state.serial.stop_bits)() == 1 { "1".to_string() } else { "2".to_string() },
                         onchange: move |val: String| {
                             if let Ok(b) = val.parse::<u8>() {
                                 state.serial.set_stop_bits(b);
@@ -72,7 +55,11 @@ pub fn SettingsDropdown(is_open: bool, onclose: EventHandler<()>) -> Element {
                     }
                     CustomSelect {
                         options: vec!["None", "Even", "Odd"],
-                        selected: parity_str,
+                        selected: match (state.serial.parity)() {
+                            crate::state::Parity::None => "None".to_string(),
+                            crate::state::Parity::Even => "Even".to_string(),
+                            crate::state::Parity::Odd => "Odd".to_string(),
+                        },
                         onchange: move |val: String| {
                             let p = match val.as_str() {
                                 "Even" => crate::state::Parity::Even,
@@ -90,7 +77,10 @@ pub fn SettingsDropdown(is_open: bool, onclose: EventHandler<()>) -> Element {
                     }
                     CustomSelect {
                         options: vec!["None", "Hardware"],
-                        selected: flow_str,
+                        selected: match (state.serial.flow_control)() {
+                            crate::state::FlowControl::None => "None".to_string(),
+                            crate::state::FlowControl::Hardware => "Hardware".to_string(),
+                        },
                         onchange: move |val: String| {
                             let f = match val.as_str() {
                                 "Hardware" => crate::state::FlowControl::Hardware,

@@ -1,13 +1,10 @@
 use crate::components::ui::CustomInputSelect;
+use crate::state::AppState;
 use dioxus::prelude::*;
 
 #[component]
-pub fn BaudRatePicker(
-    baud_rate: Signal<u32>,
-    disabled: bool,
-    onchange: EventHandler<u32>,
-) -> Element {
-    let baud_str = use_signal(move || baud_rate().to_string());
+pub fn BaudRatePicker() -> Element {
+    let state = use_context::<AppState>();
 
     rsx! {
         div { class: "w-32",
@@ -25,15 +22,14 @@ pub fn BaudRatePicker(
                     "460800",
                     "921600",
                 ],
-                selected: baud_str,
+                selected: (state.serial.baud_rate)().to_string(),
                 onchange: move |val: String| {
                     if let Ok(b) = val.parse::<u32>() {
-                        baud_rate.set(b);
-                        onchange.call(b);
+                        state.serial.set_baud_rate(b);
                     }
                 },
                 class: "w-full",
-                disabled: disabled,
+                disabled: state.conn.is_connected(),
             }
         }
     }
