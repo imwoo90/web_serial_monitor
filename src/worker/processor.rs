@@ -66,24 +66,29 @@ impl LogProcessor {
 
     fn append_chunk_internal(&mut self, chunk: &[u8], is_hex: bool) -> Result<u32, LogError> {
         let formatter = self.formatter.create_strategy(is_hex, MAX_LINE_BYTES);
-
-        let text = if is_hex {
-            formatter.format_chunk(chunk)
-        } else {
-            self.decode_with_streaming(chunk)?
-        };
-
         let timestamp = self.formatter.get_timestamp();
         let repo = &self.repository;
         let is_filtering = repo.is_filtering();
+        let filter_matcher = |text: &str| repo.matches_active_filter(text);
 
-        let (batch, offsets, filtered) = self.chunk_handler.process_chunk(
-            &text,
-            &*formatter,
-            &timestamp,
-            is_filtering,
-            |text: &str| repo.matches_active_filter(text),
-        );
+        let (batch, offsets, filtered) = if is_hex {
+            let text = formatter.format_chunk(chunk);
+            self.chunk_handler.process_text_lines(
+                &text,
+                &*formatter,
+                &timestamp,
+                is_filtering,
+                filter_matcher,
+            )
+        } else {
+            self.chunk_handler.process_vt100(
+                chunk,
+                &*formatter,
+                &timestamp,
+                is_filtering,
+                filter_matcher,
+            )
+        };
 
         if !batch.is_empty() {
             self.repository.append_lines(&batch, offsets, filtered)?;
@@ -118,9 +123,5 @@ impl LogProcessor {
         self.repository.clear()?;
         self.chunk_handler.clear();
         Ok(())
-    }
-
-    fn decode_with_streaming(&self, chunk: &[u8]) -> Result<String, LogError> {
-        self.repository.decode_chunk(chunk)
     }
 }

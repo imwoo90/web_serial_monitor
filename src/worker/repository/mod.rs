@@ -122,14 +122,4 @@ impl LogRepository {
             .as_ref()
             .is_some_and(|f| f.matches(text))
     }
-
-    /// Decodes a chunk of bytes using the storage's decoder with streaming enabled
-    pub fn decode_chunk(&self, chunk: &[u8]) -> Result<String, LogError> {
-        let opts = web_sys::TextDecodeOptions::new();
-        opts.set_stream(true);
-        self.storage
-            .decoder
-            .decode_with_u8_array_and_options(chunk, &opts)
-            .map_err(LogError::from)
-    }
 }
