@@ -163,7 +163,7 @@ pub fn use_provide_app_state() -> AppState {
         ui: UIState {
             show_settings: use_signal(|| false),
             show_highlights: use_signal(|| false),
-            show_timestamps: use_signal(|| true),
+            show_timestamps: use_signal(|| false),
             autoscroll: use_signal(|| true),
             is_hex_view: use_signal(|| false),
         },

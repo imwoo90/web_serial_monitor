@@ -2,7 +2,7 @@ use crate::state::Highlight;
 use regex::Regex;
 
 /// Processes log text to remove timestamps and split into highlight segments including ANSI colors
-pub fn process_log_segments(
+pub fn decode_ansi_text(
     text: &str,
     highlights: &[Highlight],
     show_timestamps: bool,
@@ -25,7 +25,8 @@ pub fn process_log_segments(
 
     // Using thread_local for Regex to avoid recompilation
     thread_local! {
-        static ANSI_RE: Regex = Regex::new(r"\x1B\[([0-9;]*)m").unwrap();
+        // Matches CSI sequences: ESC [ params command
+        static ANSI_RE: Regex = Regex::new(r"\x1B\[([0-9;]*)([A-Za-z])").unwrap();
     }
 
     let mut last_pos = 0;
@@ -46,30 +47,53 @@ pub fn process_log_segments(
                 segments.push((content[last_pos..start].to_string(), current_color.clone()));
             }
 
-            // Parse the ANSI code
-            if let Some(code_match) = cap.get(1) {
-                let codes_str = code_match.as_str();
-                // Codes are separated by ;
-                // Example: "0;32" -> Reset then Green
-                // Logic: 0 -> None. 3x -> Color.
-                if codes_str.is_empty() {
-                    // \x1B[m is equivalent to \x1B[0m (Reset)
-                    current_color = None;
-                } else {
-                    for code in codes_str.split(';') {
-                        match code {
-                            "0" => current_color = None,
-                            // Standard Foreground Colors
-                            "30" | "90" => current_color = Some("#9ca3af".to_string()), // Gray-400
-                            "31" | "91" => current_color = Some("#ef4444".to_string()), // Red-500
-                            "32" | "92" => current_color = Some("#10b981".to_string()), // Emerald-500
-                            "33" | "93" => current_color = Some("#f59e0b".to_string()), // Amber-500
-                            "34" | "94" => current_color = Some("#3b82f6".to_string()), // Blue-500
-                            "35" | "95" => current_color = Some("#d946ef".to_string()), // Fuchsia-500
-                            "36" | "96" => current_color = Some("#06b6d4".to_string()), // Cyan-500
-                            "37" | "97" => current_color = Some("#f3f4f6".to_string()), // Gray-100
-                            _ => {} // Ignore background/styles for now
+            // Command Processing
+            if let Some(cmd_match) = cap.get(2) {
+                let params = cap.get(1).map_or("", |m| m.as_str());
+                let cmd = cmd_match.as_str();
+
+                match cmd {
+                    "m" => {
+                        // SGR - Select Graphic Rendition (Colors)
+                        if params.is_empty() {
+                            // \x1B[m is equivalent to \x1B[0m (Reset)
+                            current_color = None;
+                        } else {
+                            for code in params.split(';') {
+                                match code {
+                                    "0" => current_color = None,
+                                    // Standard Foreground Colors
+                                    "30" | "90" => current_color = Some("#9ca3af".to_string()), // Gray-400
+                                    "31" | "91" => current_color = Some("#ef4444".to_string()), // Red-500
+                                    "32" | "92" => current_color = Some("#10b981".to_string()), // Emerald-500
+                                    "33" | "93" => current_color = Some("#f59e0b".to_string()), // Amber-500
+                                    "34" | "94" => current_color = Some("#3b82f6".to_string()), // Blue-500
+                                    "35" | "95" => current_color = Some("#d946ef".to_string()), // Fuchsia-500
+                                    "36" | "96" => current_color = Some("#06b6d4".to_string()), // Cyan-500
+                                    "37" | "97" => current_color = Some("#f3f4f6".to_string()), // Gray-100
+                                    // Note: RGB/256 colors structure (38;2;... or 38;5;...) is partially split here.
+                                    // Since this logic processes code-by-code splitting by ';', it's imperfect for multi-param codes.
+                                    // However, for standard logs, it works. True robust parsing needs a stateful iterator.
+                                    _ => {}
+                                }
+                            }
                         }
+                    }
+                    "C" => {
+                        // CUF - Cursor Forward (Spaces)
+                        // \x1B[nC moves right n times. Default 1.
+                        let count = params.parse::<usize>().unwrap_or(1);
+                        let spaces = " ".repeat(count);
+                        // We push spaces using current color (relevant if background color logic existed)
+                        segments.push((spaces, current_color.clone()));
+                    }
+                    "K" => {
+                        // EL - Erase in Line
+                        // usually \x1B[K or \x1B[0K (clear to end).
+                        // HTML renderer doesn't need to explicitly clear "void".
+                    }
+                    _ => {
+                        // Unknown command, ignore.
                     }
                 }
             }
@@ -163,13 +187,13 @@ mod tests {
         let highlights = vec![];
 
         // Green text
-        let res = process_log_segments("\x1B[32mHello\x1B[0m", &highlights, false, false);
+        let res = decode_ansi_text("\x1B[32mHello\x1B[0m", &highlights, false, false);
         assert_eq!(res.len(), 1);
         assert_eq!(res[0].0, "Hello");
         assert_eq!(res[0].1.as_deref(), Some("#10b981"));
 
         // Mixed
-        let res = process_log_segments("A\x1B[31mB\x1B[0mC", &highlights, false, false);
+        let res = decode_ansi_text("A\x1B[31mB\x1B[0mC", &highlights, false, false);
         assert_eq!(res.len(), 3);
         assert_eq!(res[0].0, "A");
         assert_eq!(res[0].1, None);
@@ -188,7 +212,7 @@ mod tests {
         }];
 
         // ANSI Green text containing "Error"
-        let res = process_log_segments("\x1B[32mNoErrorHere\x1B[0m", &highlights, false, true);
+        let res = decode_ansi_text("\x1B[32mNoErrorHere\x1B[0m", &highlights, false, true);
         assert_eq!(res.len(), 3);
         assert_eq!(res[0].0, "No");
         assert_eq!(res[0].1.as_deref(), Some("#10b981")); // Green

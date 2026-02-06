@@ -1,6 +1,6 @@
 use crate::config::LINE_HEIGHT;
 use crate::state::Highlight;
-use crate::utils::process_log_segments;
+use crate::utils::decode_ansi_text;
 use dioxus::prelude::*;
 
 #[component]
@@ -10,7 +10,7 @@ pub fn LogLine(
     show_timestamps: bool,
     show_highlights: bool,
 ) -> Element {
-    let segments = process_log_segments(&text, &highlights, show_timestamps, show_highlights);
+    let segments = decode_ansi_text(&text, &highlights, show_timestamps, show_highlights);
 
     rsx! {
         div {
