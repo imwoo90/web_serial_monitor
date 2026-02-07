@@ -37,11 +37,6 @@ impl LogProcessor {
         self.repository.get_line_count() as u32
     }
 
-    pub fn set_line_ending(&mut self, _mode: &str) {
-        // Line ending handling is now automatic in StreamingLineProcessor
-        // This method is kept for API compatibility but does nothing.
-    }
-
     pub fn set_sync_handle(&mut self, handle: FileSystemSyncAccessHandle) -> Result<(), JsValue> {
         self.set_sync_handle_internal(handle).map_err(JsValue::from)
     }

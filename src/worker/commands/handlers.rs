@@ -121,21 +121,6 @@ impl WorkerCommand for ClearCommand {
     }
 }
 
-pub struct SetLineEndingCommand {
-    pub mode: String,
-}
-
-impl WorkerCommand for SetLineEndingCommand {
-    fn execute(
-        &self,
-        state: &mut WorkerState,
-        _state_rc: &Rc<RefCell<WorkerState>>,
-    ) -> Result<bool, JsValue> {
-        state.proc.set_line_ending(&self.mode);
-        Ok(true)
-    }
-}
-
 pub struct SearchLogsCommand {
     pub query: String,
     pub match_case: bool,

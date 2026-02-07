@@ -20,7 +20,7 @@ pub struct SerialSettings {
     pub stop_bits: Signal<u8>,
     pub parity: Signal<Parity>,
     pub flow_control: Signal<FlowControl>,
-    pub rx_line_ending: Signal<LineEnding>,
+
     pub tx_line_ending: Signal<LineEnding>,
     pub tx_local_echo: Signal<bool>,
 }
@@ -173,7 +173,7 @@ pub fn use_provide_app_state() -> AppState {
             stop_bits: use_signal(|| 1u8),
             parity: use_signal(|| Parity::None),
             flow_control: use_signal(|| FlowControl::None),
-            rx_line_ending: use_signal(|| LineEnding::NL),
+
             tx_line_ending: use_signal(|| LineEnding::None),
             tx_local_echo: use_signal(|| false),
         },

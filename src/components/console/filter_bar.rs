@@ -9,9 +9,6 @@ pub fn FilterBar() -> Element {
     let show_highlights = (state.ui.show_highlights)();
     let mut index_open = use_signal(|| false);
 
-    // RX Settings
-    let rx_ending = (state.serial.rx_line_ending)();
-
     rsx! {
         div { class: "shrink-0 p-2 z-10 border-b border-[#2a2e33] bg-[#0d0f10]",
             div { class: "flex gap-3 items-center w-full min-w-[600px]",
@@ -36,16 +33,7 @@ pub fn FilterBar() -> Element {
                         }
                     }
 
-                    div { class: "w-px h-4 bg-[#2a2e33]" }
 
-                    // RX Line Ending
-                    LineEndSelector {
-                        label: "RX PARSE",
-                        selected: rx_ending,
-                        onselect: move |val| state.serial.rx_line_ending.set(val),
-                        active_class: "bg-emerald-500/20 text-emerald-500 border-emerald-500/20",
-                        is_rx: true,
-                    }
                 }
 
                 // --- Divider (Matches InputBar Divider Position) ---

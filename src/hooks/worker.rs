@@ -1,5 +1,5 @@
 use crate::state::AppState;
-use crate::types::{LineEnding, WorkerMsg};
+use crate::types::WorkerMsg;
 use crate::utils::{send_chunk_to_worker, send_worker_msg};
 use dioxus::prelude::*;
 use wasm_bindgen::prelude::Closure;
@@ -38,16 +38,6 @@ impl WorkerController {
         self.send(WorkerMsg::ExportLogs { include_timestamp });
     }
 
-    pub fn set_line_ending(&self, ending: LineEnding) {
-        let mode_str = match ending {
-            LineEnding::None => "None",
-            LineEnding::NL => "NL",
-            LineEnding::CR => "CR",
-            LineEnding::NLCR => "NLCR",
-        };
-        self.send(WorkerMsg::SetLineEnding(mode_str.to_string()));
-    }
-
     pub fn append_log(&self, text: String) {
         self.send(WorkerMsg::AppendLog(text));
     }
@@ -82,13 +72,6 @@ pub fn use_worker_controller() -> WorkerController {
                 state.conn.log_worker.set(Some(worker));
             }
         }
-    });
-
-    // RX Line Ending Sync
-    use_effect(move || {
-        let ending = (state.serial.rx_line_ending)();
-        let controller = WorkerController::new(state.conn.log_worker);
-        controller.set_line_ending(ending);
     });
 
     WorkerController::new(state.conn.log_worker)

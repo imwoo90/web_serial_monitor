@@ -70,7 +70,6 @@ pub enum WorkerMsg {
     },
     TotalLines(usize),
     Clear,
-    SetLineEnding(String),
     SearchLogs {
         query: String,
         match_case: bool,

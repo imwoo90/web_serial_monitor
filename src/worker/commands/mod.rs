@@ -16,7 +16,7 @@ pub fn create_command_from_msg(msg: WorkerMsg) -> Box<dyn WorkerCommand> {
             Box::new(RequestWindowCommand { start_line, count })
         }
         WorkerMsg::Clear => Box::new(ClearCommand),
-        WorkerMsg::SetLineEnding(mode) => Box::new(SetLineEndingCommand { mode }),
+
         WorkerMsg::SearchLogs {
             query,
             match_case,
