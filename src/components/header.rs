@@ -1,4 +1,5 @@
 use crate::components::connection_control::ConnectionControl;
+use crate::config::APP_SUBTITLE;
 use dioxus::prelude::*;
 
 #[component]
@@ -18,7 +19,7 @@ pub fn Header() -> Element {
                             "Serial"
                         }
                         span { class: "text-[10px] font-medium text-gray-400 tracking-wider uppercase",
-                            "Monitor v2.0.0"
+                            "{APP_SUBTITLE}"
                         }
                     }
                 }
@@ -27,9 +28,7 @@ pub fn Header() -> Element {
                 div { class: "w-px h-8 bg-[#2a2e33]" }
 
                 // --- Right: Controls (Aligns with Send Input: flex-1) ---
-                div { class: "flex-1 flex items-center justify-end min-w-0 pr-1",
-                    ConnectionControl {}
-                }
+                div { class: "flex-1 flex items-center justify-end min-w-0 pr-1", ConnectionControl {} }
             }
         }
     }

@@ -6,6 +6,7 @@ pub const MAX_LINE_BYTES: usize = 256;
 /// --- UI Timing & Intervals ---
 pub const TOAST_DURATION_MS: u32 = 3000;
 pub const WORKER_UPDATE_INTERVAL_MS: u32 = 16;
+pub const APP_SUBTITLE: &str = "Monitor v2.1.0";
 
 /// --- Layout & Virtual Scroll ---
 pub const LINE_HEIGHT: f64 = 20.0;
