@@ -27,10 +27,15 @@ impl std::ops::Deref for AutoDisposeTerminal {
     }
 }
 
+#[derive(Props, Clone, PartialEq)]
+pub struct XtermProps {
+    term_instance: Signal<Option<AutoDisposeTerminal>>,
+}
+
 #[component]
-pub fn Xterm() -> Element {
+pub fn Xterm(props: XtermProps) -> Element {
     let mut terminal_div = use_signal(|| None::<web_sys::HtmlElement>);
-    let term_instance = use_signal(|| None::<AutoDisposeTerminal>);
+    let term_instance = props.term_instance;
     let fit_addon = use_signal(|| None::<XtermFitAddon>);
     let state = use_context::<AppState>();
 
@@ -96,7 +101,7 @@ pub fn Xterm() -> Element {
 
                 // Terminal Container
                 div {
-                    class: "flex-1 w-full bg-transparent overflow-hidden pl-2", // Added padding-left to match monitor's look slightly, bg-transparent to show console-bg
+                    class: "flex-1 w-full bg-transparent overflow-hidden pl-2",
                     id: "xterm-container",
                     onmounted: move |_| {
                         if let Some(element) = window()

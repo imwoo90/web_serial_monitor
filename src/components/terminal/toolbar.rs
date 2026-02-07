@@ -12,7 +12,9 @@ pub fn TerminalToolbar(term_instance: Signal<Option<super::AutoDisposeTerminal>>
 
                 // History Config & Line Count
                 div { class: "flex items-center gap-2",
-                    span { class: "text-[10px] text-gray-500 font-mono", "[ LINES: {state.terminal.lines} / HISTORY:" }
+                    span { class: "text-[10px] text-gray-500 font-mono",
+                        "[ LINES: {state.terminal.lines} / HISTORY:"
+                    }
                     input {
                         class: "w-12 h-4 px-1 bg-[#0b0c0d] border border-[#222629] rounded text-[10px] text-gray-300 text-right focus:border-primary focus:outline-none transition-colors",
                         r#type: "number",
@@ -41,7 +43,9 @@ pub fn TerminalToolbar(term_instance: Signal<Option<super::AutoDisposeTerminal>>
                         title: "Decrease Font Size",
                         span { class: "text-[10px] font-bold", "-" }
                     }
-                    span { class: "text-[10px] text-gray-500 font-mono w-6 text-center", "{state.ui.font_size}px" }
+                    span { class: "text-[10px] text-gray-500 font-mono w-6 text-center",
+                        "{state.ui.font_size}px"
+                    }
                     button {
                         class: "flex items-center justify-center w-5 h-5 rounded hover:bg-white/10 transition-colors text-gray-500 hover:text-white",
                         onclick: move |_| {
@@ -58,20 +62,7 @@ pub fn TerminalToolbar(term_instance: Signal<Option<super::AutoDisposeTerminal>>
                 div { class: "w-px h-3 bg-[#2a2e33]" }
 
                 // Auto-scroll Indicator
-                div {
-                    class: "cursor-pointer group/tracking select-none",
-                    onclick: move |_| {
-                        // Toggle autoscroll
-                         let new_state = !*state.terminal.autoscroll.read();
-                         *state.terminal.autoscroll.write() = new_state;
-
-                         // If enabled, scroll to bottom immediately
-                         if new_state {
-                             if let Some(term) = term_instance.read().as_ref() {
-                                 term.scroll_to_bottom();
-                             }
-                         }
-                    },
+                div { class: "h-full flex items-center px-3 border-l border-[#222629] group/tracking select-none",
                     if *state.terminal.autoscroll.read() {
                         div { class: "text-[9px] font-mono text-primary/60 uppercase tracking-widest flex items-center gap-1 group-hover/tracking:text-primary transition-colors",
                             span { class: "w-1 h-1 rounded-full bg-primary animate-pulse" }
