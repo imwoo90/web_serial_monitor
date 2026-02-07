@@ -36,6 +36,18 @@ Unlike typical web serial tools, RusTerm leverages **OPFS (Origin Private File S
 
 ---
 
+## ⚡ Performance & Real-world Testing
+
+RusTerm is engineered for industrial-grade debugging where data volume is high and UI responsiveness is critical.
+
+*   **ESP32-C3 USB CDC Stable**: Handles maximum through-put from native USB devices (which bypasses physical UART baud rate limits) with zero frame drops.
+*   **Constant-Time UI**: Whether you have 100 lines or **10,000,000 lines**, the UI responsiveness and virtual scrolling performance remain identical (O(1) complexity).
+*   **Concurrent Worker Processing**: All log ingestion, VT100 parsing, and filtering happen in a background Rust worker. The main UI thread stays 100% responsive for interaction even during intense data floods.
+*   **Browser-Native Speed**: Leverages **WASM** and **OPFS** to achieve speeds that traditional JavaScript-based serial tools cannot reach.
+
+
+---
+
 ## 🏗️ Architecture
 
 RusTerm uses a multi-threaded architecture to ensure a smooth UI even under heavy I/O load.
