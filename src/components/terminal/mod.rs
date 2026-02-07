@@ -62,7 +62,7 @@ pub fn Xterm() -> Element {
     use_effect(move || {
         if let Some(term) = term_instance.read().as_ref() {
             let options = term.options();
-            options.set_font_size(*state.terminal.font_size.read());
+            options.set_font_size(*state.ui.font_size.read());
             options.set_scrollback(*state.terminal.scrollback.read());
         }
     });

@@ -6,7 +6,7 @@ use dioxus::prelude::*;
 #[component]
 pub fn MonitorLogLine(text: String, highlights: Vec<Highlight>, show_highlights: bool) -> Element {
     let state = use_context::<AppState>();
-    let font_size = *state.log.font_size.read();
+    let font_size = *state.ui.font_size.read();
     let line_height = line_height_from_font(font_size);
     let segments = decode_ansi_text(&text, &highlights, show_highlights);
 

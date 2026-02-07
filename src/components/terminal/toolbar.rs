@@ -26,20 +26,20 @@ pub fn TerminalToolbar(term_instance: Signal<Option<super::AutoDisposeTerminal>>
                 button {
                     class: "px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-white",
                     onclick: move |_| {
-                        let current = *state.terminal.font_size.read();
+                        let current = *state.ui.font_size.read();
                         if current > 8 {
-                            *state.terminal.font_size.write() = current - 1;
+                            *state.ui.font_size.write() = current - 1;
                         }
                     },
                     "-"
                 }
-                span { class: "text-gray-300", "{state.terminal.font_size}px" }
+                span { class: "text-gray-300", "{state.ui.font_size}px" }
                 button {
                     class: "px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-white",
                     onclick: move |_| {
-                        let current = *state.terminal.font_size.read();
+                        let current = *state.ui.font_size.read();
                         if current < 36 {
-                            *state.terminal.font_size.write() = current + 1;
+                            *state.ui.font_size.write() = current + 1;
                         }
                     },
                     "+"

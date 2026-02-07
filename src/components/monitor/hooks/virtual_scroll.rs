@@ -30,7 +30,7 @@ pub fn use_virtual_scroll() -> VirtualScroll {
     let sentinel_handle = use_signal(|| None::<Rc<MountedData>>);
 
     let total_lines = state.log.total_lines;
-    let font_size = *state.log.font_size.read();
+    let font_size = *state.ui.font_size.read();
     let line_height = line_height_from_font(font_size);
 
     let window_size = calculate_window_size(

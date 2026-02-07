@@ -12,6 +12,7 @@ pub struct UIState {
     pub autoscroll: Signal<bool>,
     pub is_hex_view: Signal<bool>,
     pub view_mode: Signal<ViewMode>,
+    pub font_size: Signal<u32>,
 }
 
 #[derive(Clone, Copy)]
@@ -47,13 +48,11 @@ pub struct LogState {
     pub highlights: Signal<Vec<Highlight>>,
     pub toasts: Signal<Vec<ToastMessage>>,
     pub active_line: Signal<Option<String>>,
-    pub font_size: Signal<u32>,
 }
 
 #[derive(Clone, Copy)]
 pub struct TerminalState {
     pub received_data: Signal<Vec<u8>>,
-    pub font_size: Signal<u32>,
     pub scrollback: Signal<u32>,
 }
 
@@ -202,6 +201,7 @@ pub fn use_provide_app_state() -> AppState {
             autoscroll: use_signal(|| true),
             is_hex_view: use_signal(|| false),
             view_mode: use_signal(|| ViewMode::Monitoring),
+            font_size: use_signal(|| 14),
         },
         serial: SerialSettings {
             baud_rate: use_signal(|| 115200u32),
@@ -231,11 +231,9 @@ pub fn use_provide_app_state() -> AppState {
             highlights: use_signal(Vec::new),
             toasts: use_signal(Vec::new),
             active_line: use_signal(|| None),
-            font_size: use_signal(|| 14),
         },
         terminal: TerminalState {
             received_data: use_signal(Vec::new),
-            font_size: use_signal(|| 14),
             scrollback: use_signal(|| 1000),
         },
     };

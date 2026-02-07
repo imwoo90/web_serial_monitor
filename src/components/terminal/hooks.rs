@@ -39,7 +39,7 @@ pub fn setup_terminal(
     js_sys::Reflect::set(
         &options,
         &"fontSize".into(),
-        &(*state.terminal.font_size.read()).into(),
+        &(*state.ui.font_size.read()).into(),
     )
     .unwrap();
     js_sys::Reflect::set(
