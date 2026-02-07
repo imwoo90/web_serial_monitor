@@ -110,6 +110,11 @@ pub fn setup_terminal(
                 drop(data_vec);
                 let array = Uint8Array::from(chunk.as_slice());
                 term_for_write.write_chunk(&array);
+
+                // Update line count
+                let lines = term_for_write.buffer().active().length();
+                let mut lines_signal = state.terminal.lines;
+                *lines_signal.write() = lines as usize;
             }
         }
     });
@@ -121,4 +126,30 @@ pub fn setup_terminal(
         fit.fit();
     });
     resize_listener.set(Some(listener));
+
+    // Scroll Handler (Update Autoscroll State)
+    let term_for_scroll: Terminal = term.clone().unchecked_into();
+    let mut autoscroll_signal = state.terminal.autoscroll;
+    let last_update = Rc::new(RefCell::new(0.0));
+
+    let on_scroll_closure = wasm_bindgen::prelude::Closure::wrap(Box::new(move |_| {
+        let now = js_sys::Date::now();
+        let mut last = last_update.borrow_mut();
+
+        // Throttle updates to max once per 100ms to prevent freezing during high-speed logs
+        if now - *last < 100.0 {
+            return;
+        }
+        *last = now;
+
+        let buffer = term_for_scroll.buffer().active();
+        // Allow 1 line tolerance
+        let is_at_bottom = (buffer.base_y() - buffer.viewport_y()).abs() <= 1;
+
+        if *autoscroll_signal.peek() != is_at_bottom {
+            *autoscroll_signal.write() = is_at_bottom;
+        }
+    }) as Box<dyn FnMut(i32)>);
+    term.on_scroll(on_scroll_closure.as_ref().unchecked_ref());
+    on_scroll_closure.forget();
 }

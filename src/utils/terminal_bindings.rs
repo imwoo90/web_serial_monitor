@@ -64,6 +64,9 @@ extern "C" {
 extern "C" {
     pub type TerminalBuffer;
 
+    #[wasm_bindgen(method, getter, js_name = length)]
+    pub fn length(this: &TerminalBuffer) -> u32;
+
     #[wasm_bindgen(method, getter, js_name = viewportY)]
     pub fn viewport_y(this: &TerminalBuffer) -> i32;
 

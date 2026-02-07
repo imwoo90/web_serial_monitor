@@ -14,11 +14,6 @@ pub fn MonitorHeader(
     rsx! {
         div { class: "shrink-0 h-6 bg-[#16181a] border-b border-[#222629] flex items-center justify-between px-3",
             div { class: "flex items-center gap-4",
-                div { class: "flex gap-1.5",
-                    div { class: "w-2 h-2 rounded-full bg-[#394f56]" }
-                    div { class: "w-2 h-2 rounded-full bg-[#394f56]" }
-                    div { class: "w-2 h-2 rounded-full bg-[#394f56]" }
-                }
                 span { class: "text-[10px] text-gray-500 font-mono", "[ LINES: {count} / OPFS ENABLED ]" }
             }
             div { class: "flex items-center gap-2",

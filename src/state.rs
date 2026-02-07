@@ -54,6 +54,8 @@ pub struct LogState {
 pub struct TerminalState {
     pub received_data: Signal<Vec<u8>>,
     pub scrollback: Signal<u32>,
+    pub lines: Signal<usize>,
+    pub autoscroll: Signal<bool>,
 }
 
 #[derive(Clone, Copy)]
@@ -235,6 +237,8 @@ pub fn use_provide_app_state() -> AppState {
         terminal: TerminalState {
             received_data: use_signal(Vec::new),
             scrollback: use_signal(|| 1000),
+            lines: use_signal(|| 0),
+            autoscroll: use_signal(|| true),
         },
     };
 
