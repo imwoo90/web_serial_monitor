@@ -50,21 +50,6 @@ impl WorkerCommand for AppendChunkCommand {
     }
 }
 
-pub struct AppendLogCommand {
-    pub text: String,
-}
-
-impl WorkerCommand for AppendLogCommand {
-    fn execute(
-        &self,
-        state: &mut WorkerState,
-        _state_rc: &Rc<RefCell<WorkerState>>,
-    ) -> Result<bool, JsValue> {
-        state.proc.append_log(self.text.clone())?;
-        Ok(true)
-    }
-}
-
 pub struct RequestWindowCommand {
     pub start_line: usize,
     pub count: usize,

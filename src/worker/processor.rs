@@ -2,7 +2,7 @@ use crate::worker::chunk_handler::StreamingLineProcessor;
 use crate::worker::error::LogError;
 
 use crate::worker::formatter::LogFormatter;
-use crate::worker::repository::index::{ByteOffset, LineRange};
+
 use crate::worker::repository::LogRepository;
 
 use wasm_bindgen::prelude::*;
@@ -88,25 +88,6 @@ impl LogProcessor {
             self.repository.append_lines(&batch, offsets, filtered)?;
         }
         Ok(active_line)
-    }
-
-    pub fn append_log(&mut self, text: String) -> Result<u32, JsValue> {
-        self.append_log_internal(text).map_err(JsValue::from)
-    }
-
-    fn append_log_internal(&mut self, text: String) -> Result<u32, LogError> {
-        let log = format!("[TX] {} {}\n", self.formatter.get_timestamp(), text);
-        let len = ByteOffset(log.len() as u64);
-        let filtered = if self.repository.matches_active_filter(&log) {
-            vec![LineRange {
-                start: ByteOffset(0),
-                end: len,
-            }]
-        } else {
-            vec![]
-        };
-        self.repository.append_lines(&log, vec![len], filtered)?;
-        Ok(self.get_line_count())
     }
 
     pub fn clear(&mut self) -> Result<(), JsValue> {

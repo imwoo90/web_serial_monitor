@@ -59,7 +59,7 @@ pub enum WorkerMsg {
         chunk: Vec<u8>,
         is_hex: bool,
     },
-    AppendLog(String),
+
     RequestWindow {
         start_line: usize,
         count: usize,

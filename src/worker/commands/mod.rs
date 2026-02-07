@@ -11,7 +11,7 @@ pub fn create_command_from_msg(msg: WorkerMsg) -> Box<dyn WorkerCommand> {
     match msg {
         WorkerMsg::NewSession => Box::new(NewSessionCommand),
         WorkerMsg::AppendChunk { chunk, is_hex } => Box::new(AppendChunkCommand { chunk, is_hex }),
-        WorkerMsg::AppendLog(text) => Box::new(AppendLogCommand { text }),
+
         WorkerMsg::RequestWindow { start_line, count } => {
             Box::new(RequestWindowCommand { start_line, count })
         }
