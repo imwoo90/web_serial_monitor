@@ -67,7 +67,7 @@ pub fn MonitorViewport(
 
             // Virtual Scroll Spacer & Content
             div { style: "height: {total_height}px; width: 100%; position: absolute; top: 0; left: 0; pointer-events: none;" }
-            div { style: "position: absolute; top: 0; left: 0; right: 0; transform: translateY({offset_top}px); padding: {CONSOLE_TOP_PADDING}px 1rem {CONSOLE_BOTTOM_PADDING}px 1rem; pointer-events: auto; min-width: 100%; width: max-content;",
+            div { style: "position: absolute; top: 0; left: 0; right: 0; transform: translateY({offset_top}px); padding: {CONSOLE_TOP_PADDING}px 0 {CONSOLE_BOTTOM_PADDING}px 0; pointer-events: auto; min-width: 100%; width: max-content;",
                 {
                     let highlights = (state.log.highlights)().clone();
                     let show_highlights = (state.ui.show_highlights)();

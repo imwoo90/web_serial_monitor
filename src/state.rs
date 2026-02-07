@@ -47,6 +47,7 @@ pub struct LogState {
     pub highlights: Signal<Vec<Highlight>>,
     pub toasts: Signal<Vec<ToastMessage>>,
     pub active_line: Signal<Option<String>>,
+    pub font_size: Signal<u32>,
 }
 
 #[derive(Clone, Copy)]
@@ -230,6 +231,7 @@ pub fn use_provide_app_state() -> AppState {
             highlights: use_signal(Vec::new),
             toasts: use_signal(Vec::new),
             active_line: use_signal(|| None),
+            font_size: use_signal(|| 14),
         },
         terminal: TerminalState {
             received_data: use_signal(Vec::new),

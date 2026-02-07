@@ -89,8 +89,9 @@ pub fn calculate_scroll_state(
     total_lines: usize,
     scale_factor: f64,
     physical_total_height: f64,
+    line_height: f64,
 ) -> (usize, bool) {
-    use crate::config::{LINE_HEIGHT, TOP_BUFFER};
+    use crate::config::TOP_BUFFER;
     use crate::utils::calculate_start_index;
 
     // 1. Physical Bottom Detection
@@ -104,12 +105,12 @@ pub fn calculate_scroll_state(
     // 2. Calculate Start Index with Clamping
     let new_index = if is_at_bottom {
         // If at bottom, force to the maximum possible start index
-        let visible_lines = (viewport_height / LINE_HEIGHT).ceil() as usize;
+        let visible_lines = (viewport_height / line_height).ceil() as usize;
         total_lines.saturating_sub(visible_lines)
     } else {
         // Normal calculation: Convert physical to logical
         let logical_offset_y = offset_y * scale_factor;
-        calculate_start_index(logical_offset_y, LINE_HEIGHT, TOP_BUFFER)
+        calculate_start_index(logical_offset_y, line_height, TOP_BUFFER)
     };
 
     (new_index, is_at_bottom)
@@ -122,13 +123,12 @@ pub fn calculate_virtual_metrics(
     total_lines: usize,
     start_index: usize,
     viewport_height: f64,
+    line_height: f64,
 ) -> (f64, f64, f64) {
-    use crate::config::{
-        CONSOLE_BOTTOM_PADDING, CONSOLE_TOP_PADDING, LINE_HEIGHT, VIRTUAL_SCROLL_THRESHOLD,
-    };
+    use crate::config::{CONSOLE_BOTTOM_PADDING, CONSOLE_TOP_PADDING, VIRTUAL_SCROLL_THRESHOLD};
 
     let real_total_height =
-        (total_lines as f64) * LINE_HEIGHT + CONSOLE_TOP_PADDING + CONSOLE_BOTTOM_PADDING;
+        (total_lines as f64) * line_height + CONSOLE_TOP_PADDING + CONSOLE_BOTTOM_PADDING;
 
     // Use Dynamic x2 Scaling:
     // We pick a scale factor that is a power of 2 (1, 2, 4, 8...),
@@ -148,7 +148,7 @@ pub fn calculate_virtual_metrics(
     };
 
     // Calculate logical offset top
-    let logical_offset_top = (start_index as f64) * LINE_HEIGHT;
+    let logical_offset_top = (start_index as f64) * line_height;
 
     // Map logical offset to physical offset (Stable because scale_factor only changes at power-of-2 boundaries)
     // FLOOR the value to avoid sub-pixel rendering jitters
