@@ -116,8 +116,6 @@ pub fn calculate_scroll_state(
     (new_index, is_at_bottom)
 }
 
-// Removed ConsoleHeader and ResumeScrollButton to separate files
-
 /// Calculates virtual scroll metrics (total_height, offset_top, scale_factor)
 pub fn calculate_virtual_metrics(
     total_lines: usize,

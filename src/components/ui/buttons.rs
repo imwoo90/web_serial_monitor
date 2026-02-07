@@ -44,3 +44,19 @@ pub fn FilterOptionButton(
         }
     }
 }
+
+/// A floating action button (FAB) that appears when auto-scroll is paused.
+/// Typically positioned absolute bottom-right relative to its container.
+#[component]
+pub fn ResumeScrollButton(onclick: EventHandler<MouseEvent>) -> Element {
+    rsx! {
+        button {
+            class: "absolute bottom-6 right-6 bg-primary text-surface rounded-full w-10 h-10 shadow-lg shadow-black/50 hover:bg-white active:scale-95 transition-all duration-300 z-20 flex items-center justify-center cursor-pointer group/fab",
+            onclick: move |evt| onclick.call(evt),
+            span { class: "material-symbols-outlined text-[20px] font-bold", "arrow_downward" }
+            span { class: "absolute -top-8 right-0 bg-surface text-[9px] font-bold text-gray-300 px-2 py-1 rounded border border-white/5 opacity-0 group-hover/fab:opacity-100 transition-opacity whitespace-nowrap pointer-events-none uppercase tracking-widest",
+                "Resume Scroll"
+            }
+        }
+    }
+}

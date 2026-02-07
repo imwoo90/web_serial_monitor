@@ -4,6 +4,7 @@ use dioxus::prelude::*;
 use super::monitor::{FilterBar, InputBar, MacroBar, Monitor};
 use super::terminal::{AutoDisposeTerminal, Xterm};
 use crate::components::header::Header;
+use crate::components::ui::buttons::ResumeScrollButton;
 use crate::hooks::use_worker_controller;
 use crate::state::ViewMode;
 
@@ -42,7 +43,7 @@ pub fn SerialMonitor() -> Element {
                     div { class: "relative flex-1 flex flex-col min-h-0 w-full",
                         Xterm { term_instance }
                         if !*app_state.terminal.autoscroll.read() {
-                            crate::components::monitor::monitor_view::ResumeScrollButton {
+                            ResumeScrollButton {
                                 onclick: move |_| {
                                     if let Some(term) = term_instance.read().as_ref() {
                                         term.scroll_to_bottom();
