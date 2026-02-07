@@ -31,6 +31,7 @@ pub fn create_command_from_msg(msg: WorkerMsg) -> Box<dyn WorkerCommand> {
         WorkerMsg::ExportLogs { include_timestamp } => {
             Box::new(ExportLogsCommand { include_timestamp })
         }
+
         _ => Box::new(NoOpCommand), // Fallback for handled/error messages
     }
 }

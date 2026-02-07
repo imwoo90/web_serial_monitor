@@ -36,14 +36,10 @@ impl WorkerCommand for AppendChunkCommand {
         _state_rc: &Rc<RefCell<WorkerState>>,
     ) -> Result<bool, JsValue> {
         let active_line = state.proc.append_chunk(&self.chunk, self.is_hex)?;
-        if active_line.is_some() {
-            state.send_msg(WorkerMsg::ActiveLine(active_line));
+        if let Some(line) = active_line {
+            state.send_msg(WorkerMsg::ActiveLine(Some(line)));
         } else {
-            // Maybe send None to clear if it was previously present?
-            // Logic in processor ensures we get None if hex.
-            // If VT100, we get Current Line.
-            // If we want to clear when switching to Hex, we rely on `is_hex` check in processor returning None.
-            // So if `active_line` is None, we SHOULD send None to clear the UI.
+            // Send None to clear if active line became empty (e.g. newline received)
             state.send_msg(WorkerMsg::ActiveLine(None));
         }
         Ok(true)
