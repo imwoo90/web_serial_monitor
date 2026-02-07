@@ -38,10 +38,6 @@ impl WorkerController {
         self.send(WorkerMsg::ExportLogs { include_timestamp });
     }
 
-    pub fn append_log(&self, text: String) {
-        self.send(WorkerMsg::AppendLog(text));
-    }
-
     pub fn append_chunk(&self, chunk: js_sys::Uint8Array, is_hex: bool) {
         if let Some(w) = self.worker_sig.read().as_ref() {
             send_chunk_to_worker(w, chunk, is_hex);

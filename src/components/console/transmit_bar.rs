@@ -3,6 +3,7 @@ use crate::utils::serial;
 use crate::utils::{format_hex_input, parse_hex_string, CommandHistory};
 use dioxus::prelude::*;
 use futures_util::StreamExt;
+use js_sys::Uint8Array;
 
 #[component]
 pub fn TransmitBar() -> Element {
@@ -57,7 +58,8 @@ pub fn TransmitBar() -> Element {
             if let Some(conn_port) = port {
                 if serial::send_data(&conn_port, &data).await.is_ok() {
                     if local_echo {
-                        bridge.append_log(text.clone());
+                        let array = Uint8Array::from(data.as_slice());
+                        bridge.append_chunk(array, false);
                     }
                     input_value.set(String::new());
                     if !text.is_empty() {
