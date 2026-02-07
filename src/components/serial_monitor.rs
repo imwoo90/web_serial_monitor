@@ -12,7 +12,7 @@ pub fn SerialMonitor() -> Element {
     let app_state = crate::state::use_provide_app_state();
     let bridge = use_worker_controller();
     let view_mode = app_state.ui.view_mode;
-    let term_instance = use_signal(|| None::<AutoDisposeTerminal>);
+    let mut term_instance = use_signal(|| None::<AutoDisposeTerminal>);
 
     use_effect(move || {
         let mode = view_mode();
@@ -21,6 +21,8 @@ pub fn SerialMonitor() -> Element {
             ViewMode::Monitoring => {
                 bridge.clear();
                 app_state.log.clear();
+                // Clear terminal instance when leaving Terminal mode to ensure re-attachment
+                term_instance.set(None);
             }
             ViewMode::Terminal => {
                 app_state.terminal.clear();

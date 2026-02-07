@@ -67,13 +67,10 @@ pub fn Xterm(props: XtermProps) -> Element {
     let fit_addon = use_signal(|| None::<XtermFitAddon>);
     let state = use_context::<AppState>();
 
-    // Buffers for throttled operations
-    let aggregation_buffer = Rc::new(RefCell::new(Vec::<u8>::new()));
-    let send_buffer = Rc::new(RefCell::new(Vec::<u8>::new()));
+    // Buffers for throttled operations - persisted across renders
+    let aggregation_buffer = use_signal(|| Rc::new(RefCell::new(Vec::<u8>::new())));
+    let send_buffer = use_signal(|| Rc::new(RefCell::new(Vec::<u8>::new())));
     let resize_listener = use_signal(|| None::<gloo_events::EventListener>);
-
-    // Clone for data ingestion effect
-    let aggregation_buffer_for_effect = aggregation_buffer.clone();
 
     // Terminal setup effect
     use_effect(move || {
@@ -84,8 +81,8 @@ pub fn Xterm(props: XtermProps) -> Element {
             hooks::setup_terminal(
                 div,
                 state,
-                send_buffer.clone(),
-                aggregation_buffer.clone(),
+                send_buffer(),
+                aggregation_buffer(),
                 term_instance,
                 resize_listener,
                 fit_addon,
@@ -110,12 +107,56 @@ pub fn Xterm(props: XtermProps) -> Element {
         }
     });
 
-    // Data ingestion effect
+    // Data ingestion loop
     use_effect(move || {
         let _ = state.terminal.received_data.read();
         let data = state.terminal.take_data();
         if !data.is_empty() {
-            aggregation_buffer_for_effect.borrow_mut().extend(data);
+            aggregation_buffer.read().borrow_mut().extend(data);
+        }
+    });
+
+    // Terminal write loop (100ms)
+    use_resource(move || {
+        let mut lines_signal = state.terminal.lines;
+        async move {
+            loop {
+                gloo_timers::future::TimeoutFuture::new(100).await;
+                if let Some(term) = term_instance.read().as_ref() {
+                    let buffer_rc = aggregation_buffer.read().clone();
+                    let mut data_vec = buffer_rc.borrow_mut();
+                    if !data_vec.is_empty() {
+                        let chunk = std::mem::take(&mut *data_vec);
+                        drop(data_vec);
+                        let array = js_sys::Uint8Array::from(chunk.as_slice());
+                        term.write_chunk(&array);
+
+                        // Update line count
+                        let lines = term.buffer().active().length();
+                        *lines_signal.write() = lines as usize;
+                    }
+                }
+            }
+        }
+    });
+
+    // Serial send loop (60Hz)
+    use_resource(move || async move {
+        loop {
+            gloo_timers::future::TimeoutFuture::new(16).await;
+            let data = {
+                let buffer_rc = send_buffer.read().clone();
+                let mut buf = buffer_rc.borrow_mut();
+                if buf.is_empty() {
+                    continue;
+                }
+                std::mem::take(&mut *buf)
+            };
+            if let Some(port) = state.conn.port.peek().clone() {
+                if let Err(e) = crate::utils::serial_api::send_data(&port, &data).await {
+                    web_sys::console::error_1(&e);
+                }
+            }
         }
     });
 

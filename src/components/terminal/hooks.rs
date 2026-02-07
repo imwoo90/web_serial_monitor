@@ -1,7 +1,6 @@
 use crate::state::AppState;
 use crate::utils::terminal_bindings::*;
 use dioxus::prelude::*;
-use js_sys::Uint8Array;
 use std::cell::RefCell;
 use std::rc::Rc;
 use wasm_bindgen::JsCast;
@@ -12,7 +11,7 @@ pub fn setup_terminal(
     div: &web_sys::HtmlElement,
     state: AppState,
     send_buffer: Rc<RefCell<Vec<u8>>>,
-    aggregation_buffer: Rc<RefCell<Vec<u8>>>,
+    _aggregation_buffer: Rc<RefCell<Vec<u8>>>,
     mut term_instance: Signal<Option<super::AutoDisposeTerminal>>,
     mut resize_listener: Signal<Option<gloo_events::EventListener>>,
     mut fit_addon_signal: Signal<Option<XtermFitAddon>>,
@@ -67,27 +66,6 @@ pub fn setup_terminal(
     term.on_data(on_data_closure.as_ref().unchecked_ref());
     on_data_closure.forget();
 
-    // Throttled Send Loop (60Hz)
-    let send_buffer_for_loop = send_buffer;
-    let state_for_send = state;
-    wasm_bindgen_futures::spawn_local(async move {
-        loop {
-            gloo_timers::future::TimeoutFuture::new(16).await;
-            let data = {
-                let mut buf = send_buffer_for_loop.borrow_mut();
-                if buf.is_empty() {
-                    continue;
-                }
-                std::mem::take(&mut *buf)
-            };
-            if let Some(port) = state_for_send.conn.port.peek().clone() {
-                if let Err(e) = crate::utils::serial_api::send_data(&port, &data).await {
-                    web_sys::console::error_1(&e);
-                }
-            }
-        }
-    });
-
     // Store terminal instance
     let term_for_instance: Terminal = term.clone().unchecked_into();
     term_instance.set(Some(super::AutoDisposeTerminal(term_for_instance)));
@@ -97,26 +75,6 @@ pub fn setup_terminal(
     spawn(async move {
         gloo_timers::future::TimeoutFuture::new(100).await;
         fit_initial.fit();
-    });
-
-    // Throttled Write Interval (60Hz)
-    let term_for_write: Terminal = term.clone().unchecked_into();
-    wasm_bindgen_futures::spawn_local(async move {
-        loop {
-            gloo_timers::future::TimeoutFuture::new(60).await;
-            let mut data_vec = aggregation_buffer.borrow_mut();
-            if !data_vec.is_empty() {
-                let chunk = std::mem::take(&mut *data_vec);
-                drop(data_vec);
-                let array = Uint8Array::from(chunk.as_slice());
-                term_for_write.write_chunk(&array);
-
-                // Update line count
-                let lines = term_for_write.buffer().active().length();
-                let mut lines_signal = state.terminal.lines;
-                *lines_signal.write() = lines as usize;
-            }
-        }
     });
 
     // Resize Handler
