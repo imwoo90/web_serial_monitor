@@ -1,12 +1,13 @@
 use crate::components::monitor::hooks::effects::{use_search_sync, use_settings_sync};
+use crate::components::monitor::monitor_header::MonitorHeader;
 use crate::components::monitor::monitor_viewport::MonitorViewport;
+use crate::components::ui::buttons::ResumeScrollButton;
 use crate::components::ui::console::ConsoleFrame;
 use crate::hooks::use_worker_controller;
 use crate::state::AppState;
 use dioxus::prelude::*;
 
 use crate::components::monitor::hooks::virtual_scroll::use_virtual_scroll;
-use crate::components::monitor::monitor_header::MonitorHeader;
 
 #[component]
 pub fn Monitor() -> Element {
@@ -26,8 +27,7 @@ pub fn Monitor() -> Element {
                 onexport: move |_| bridge.export((state.ui.show_timestamps)()),
                 onclear: move |_| {
                     bridge.clear();
-                    state.clear_logs();
-                    vs.start_index.set(0);
+                    state.log.clear();
                     state.success("Logs Cleared");
                 },
                 ontoggle_autoscroll: move |_| state.ui.toggle_autoscroll(),
@@ -46,7 +46,7 @@ pub fn Monitor() -> Element {
             }
 
             if !(state.ui.autoscroll)() {
-                crate::components::ui::buttons::ResumeScrollButton {
+                ResumeScrollButton {
                     onclick: move |_| {
                         web_sys::window()
                             .and_then(|win| win.document())

@@ -24,7 +24,7 @@ pub fn MonitorHeader(
             on_clear: move |evt| onclear.call(evt),
             on_export: move |evt| onexport.call(evt),
             min_font_size: 8,
-            max_font_size: 24,
+            max_font_size: 36,
         }
     }
 }

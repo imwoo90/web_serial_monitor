@@ -1,6 +1,7 @@
 mod hooks;
 mod toolbar;
 
+use crate::components::ui::buttons::ResumeScrollButton;
 use crate::components::ui::console::ConsoleFrame;
 use crate::state::AppState;
 use crate::utils::terminal_bindings::{Terminal, XtermFitAddon};
@@ -13,6 +14,32 @@ use web_sys::window;
 pub use toolbar::TerminalToolbar;
 
 pub struct AutoDisposeTerminal(pub Terminal);
+
+#[component]
+pub fn TerminalView(term_instance: Signal<Option<AutoDisposeTerminal>>) -> Element {
+    let app_state = use_context::<AppState>();
+
+    rsx! {
+        ConsoleFrame {
+            // Toolbar
+            TerminalToolbar { term_instance }
+
+            // Terminal Content
+            Xterm { term_instance }
+
+            // Resume Scroll Button
+            if !*app_state.terminal.autoscroll.read() {
+                ResumeScrollButton {
+                    onclick: move |_| {
+                        if let Some(term) = term_instance.read().as_ref() {
+                            term.scroll_to_bottom();
+                        }
+                    },
+                }
+            }
+        }
+    }
+}
 
 impl Drop for AutoDisposeTerminal {
     fn drop(&mut self) {
@@ -93,27 +120,22 @@ pub fn Xterm(props: XtermProps) -> Element {
     });
 
     rsx! {
-        ConsoleFrame {
-            // Toolbar
-            TerminalToolbar { term_instance }
-
-            // Terminal Container
-            div {
-                class: "flex-1 w-full bg-transparent overflow-hidden pl-2",
-                id: "xterm-container",
-                onmounted: move |_| {
-                    if let Some(element) = window()
-                        .unwrap()
-                        .document()
-                        .unwrap()
-                        .get_element_by_id("xterm-container")
-                    {
-                        if let Ok(html_elem) = element.dyn_into::<web_sys::HtmlElement>() {
-                            terminal_div.set(Some(html_elem));
-                        }
+        // Terminal Container
+        div {
+            class: "flex-1 w-full bg-transparent overflow-hidden pl-2",
+            id: "xterm-container",
+            onmounted: move |_| {
+                if let Some(element) = window()
+                    .unwrap()
+                    .document()
+                    .unwrap()
+                    .get_element_by_id("xterm-container")
+                {
+                    if let Ok(html_elem) = element.dyn_into::<web_sys::HtmlElement>() {
+                        terminal_div.set(Some(html_elem));
                     }
-                },
-            }
+                }
+            },
         }
     }
 }

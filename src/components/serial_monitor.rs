@@ -2,9 +2,8 @@ use crate::components::ui::ToastContainer;
 use dioxus::prelude::*;
 
 use super::monitor::{FilterBar, InputBar, MacroBar, Monitor};
-use super::terminal::{AutoDisposeTerminal, Xterm};
+use super::terminal::{AutoDisposeTerminal, TerminalView};
 use crate::components::header::Header;
-use crate::components::ui::buttons::ResumeScrollButton;
 use crate::hooks::use_worker_controller;
 use crate::state::ViewMode;
 
@@ -38,21 +37,14 @@ pub fn SerialMonitor() -> Element {
                 if view_mode() == ViewMode::Monitoring {
                     InputBar {}
                     FilterBar {}
+                }
+
+                if view_mode() == ViewMode::Monitoring {
                     Monitor {}
                 } else {
-                    div { class: "relative flex-1 flex flex-col min-h-0 w-full",
-                        Xterm { term_instance }
-                        if !*app_state.terminal.autoscroll.read() {
-                            ResumeScrollButton {
-                                onclick: move |_| {
-                                    if let Some(term) = term_instance.read().as_ref() {
-                                        term.scroll_to_bottom();
-                                    }
-                                },
-                            }
-                        }
-                    }
+                    TerminalView { term_instance }
                 }
+
                 MacroBar {}
                 ToastContainer { toasts }
             }

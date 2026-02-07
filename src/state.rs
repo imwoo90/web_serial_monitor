@@ -251,10 +251,6 @@ impl AppState {
         self.log.add_toast(message, type_);
     }
 
-    pub fn clear_logs(&self) {
-        self.log.clear();
-    }
-
     pub fn success(&self, msg: &str) {
         self.add_toast(msg, ToastType::Success);
     }

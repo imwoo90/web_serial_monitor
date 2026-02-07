@@ -9,15 +9,11 @@ use dioxus::prelude::*;
 use std::rc::Rc;
 
 pub struct VirtualScroll {
-    pub start_index: Signal<usize>,
-    pub _console_height: Signal<f64>,
     pub total_height: f64,
     pub offset_top: f64,
-    pub _scale_factor: f64,
     pub console_handle: Signal<Option<Rc<MountedData>>>,
     pub sentinel_handle: Signal<Option<Rc<MountedData>>>,
     pub scroll_task: Resource<()>,
-    pub _height_task: Resource<()>,
 }
 
 pub fn use_virtual_scroll() -> VirtualScroll {
@@ -47,7 +43,7 @@ pub fn use_virtual_scroll() -> VirtualScroll {
         calculate_virtual_metrics(total_lines(), start_index(), console_height(), line_height);
 
     // Height update task
-    let height_task = use_resource(move || {
+    let _height_task = use_resource(move || {
         let handle = (console_handle)();
         async move {
             if let Some(handle) = handle {
@@ -89,14 +85,10 @@ pub fn use_virtual_scroll() -> VirtualScroll {
     });
 
     VirtualScroll {
-        start_index,
-        _console_height: console_height,
         total_height,
         offset_top,
-        _scale_factor: scale_factor,
         console_handle,
         sentinel_handle,
         scroll_task,
-        _height_task: height_task,
     }
 }

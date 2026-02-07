@@ -1,4 +1,4 @@
-use crate::components::ui::console::{ConsoleSeparator, UnifiedConsoleToolbar};
+use crate::components::ui::console::UnifiedConsoleToolbar;
 use crate::state::AppState;
 use dioxus::prelude::*;
 
