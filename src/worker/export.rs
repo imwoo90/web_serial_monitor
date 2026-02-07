@@ -1,5 +1,4 @@
 use crate::config::EXPORT_CHUNK_SIZE;
-use crate::state::LineEnding;
 use crate::worker::error::LogError;
 use crate::worker::repository::index::ByteOffset;
 use wasm_bindgen::prelude::*;
@@ -19,12 +18,10 @@ impl LogExporter {
         handle: FileSystemSyncAccessHandle,
         decoder: TextDecoder,
         encoder: TextEncoder,
-        line_ending_mode: LineEnding,
         file_size: ByteOffset,
         include_timestamp: bool,
     ) -> Result<js_sys::Object, LogError> {
         let size = file_size;
-        let mode = line_ending_mode;
         let backend = handle;
         let dec = decoder;
         let enc = encoder;
@@ -48,16 +45,11 @@ impl LogExporter {
                     JsValue::from(js_sys::Uint8Array::from(&buf[..]))
                 } else {
                     let text = d.decode_with_u8_array(&buf).unwrap_or_default();
-                    let sep = match mode {
-                        LineEnding::CR => "\r",
-                        LineEnding::NLCR => "\r\n",
-                        _ => "\n",
-                    };
                     let out = text
-                        .split(sep)
+                        .split('\n')
                         .map(|l| if l.len() > 15 { &l[15..] } else { l })
                         .collect::<Vec<_>>()
-                        .join(sep);
+                        .join("\n");
                     JsValue::from(e.encode_with_input(&out))
                 };
                 Some((Ok(res), ByteOffset(off.0 + len as u64)))

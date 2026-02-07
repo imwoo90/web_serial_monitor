@@ -201,7 +201,6 @@ impl WorkerCommand for ExportLogsCommand {
             handle,
             repo.storage.decoder.clone(),
             repo.storage.encoder.clone(),
-            state.proc.formatter.line_ending_mode,
             size,
             self.include_timestamp,
         )

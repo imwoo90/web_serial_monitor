@@ -1,4 +1,3 @@
-use crate::state::LineEnding;
 use crate::worker::chunk_handler::StreamingLineProcessor;
 use crate::worker::error::LogError;
 
@@ -28,7 +27,7 @@ impl LogProcessor {
     fn new_internal() -> Result<Self, LogError> {
         Ok(LogProcessor {
             repository: LogRepository::new()?,
-            formatter: LogFormatter::new(LineEnding::NL),
+            formatter: LogFormatter::new(),
             chunk_handler: StreamingLineProcessor::new(),
         })
     }
@@ -38,14 +37,9 @@ impl LogProcessor {
         self.repository.get_line_count() as u32
     }
 
-    pub fn set_line_ending(&mut self, mode: &str) {
-        self.formatter.line_ending_mode = match mode {
-            "None" => LineEnding::None,
-            "NL" => LineEnding::NL,
-            "CR" => LineEnding::CR,
-            "NLCR" => LineEnding::NLCR,
-            _ => LineEnding::NL,
-        };
+    pub fn set_line_ending(&mut self, _mode: &str) {
+        // Line ending handling is now automatic in StreamingLineProcessor
+        // This method is kept for API compatibility but does nothing.
     }
 
     pub fn set_sync_handle(&mut self, handle: FileSystemSyncAccessHandle) -> Result<(), JsValue> {
