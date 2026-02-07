@@ -14,6 +14,7 @@ use crate::config::MAX_LINE_BYTES;
 pub struct LogProcessor {
     pub(crate) repository: LogRepository,
     pub(crate) formatter: LogFormatter,
+    pub(crate) show_timestamps: bool,
     chunk_handler: StreamingLineProcessor,
 }
 
@@ -28,6 +29,7 @@ impl LogProcessor {
         Ok(LogProcessor {
             repository: LogRepository::new()?,
             formatter: LogFormatter::new(),
+            show_timestamps: false,
             chunk_handler: StreamingLineProcessor::new(),
         })
     }
@@ -59,7 +61,12 @@ impl LogProcessor {
         is_hex: bool,
     ) -> Result<Option<String>, LogError> {
         let formatter = self.formatter.create_strategy(is_hex, MAX_LINE_BYTES);
-        let timestamp = self.formatter.get_timestamp();
+        let timestamp = if self.show_timestamps {
+            self.formatter.get_timestamp()
+        } else {
+            String::new()
+        };
+
         let repo = &self.repository;
         let is_filtering = repo.is_filtering();
         let filter_matcher = |text: &str| repo.matches_active_filter(text);
@@ -88,6 +95,10 @@ impl LogProcessor {
             self.repository.append_lines(&batch, offsets, filtered)?;
         }
         Ok(active_line)
+    }
+
+    pub fn set_timestamp_state(&mut self, enabled: bool) {
+        self.show_timestamps = enabled;
     }
 
     pub fn clear(&mut self) -> Result<(), JsValue> {

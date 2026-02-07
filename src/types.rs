@@ -66,6 +66,7 @@ pub enum WorkerMsg {
         chunk: Vec<u8>,
         is_hex: bool,
     },
+    SetTimestampState(bool),
 
     RequestWindow {
         start_line: usize,

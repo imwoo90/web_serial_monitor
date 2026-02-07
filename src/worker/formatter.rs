@@ -13,7 +13,11 @@ pub struct DefaultFormatter {
 
 impl LogFormatterStrategy for DefaultFormatter {
     fn format(&self, text: &str, timestamp: &str) -> String {
-        format!("{} {}\n", timestamp, text)
+        if timestamp.is_empty() {
+            format!("{}\n", text)
+        } else {
+            format!("{} {}\n", timestamp, text)
+        }
     }
 
     fn format_chunk(&self, _chunk: &[u8]) -> String {
@@ -31,7 +35,9 @@ pub struct HexFormatter {
 
 impl LogFormatterStrategy for HexFormatter {
     fn format(&self, text: &str, timestamp: &str) -> String {
-        if text.is_empty() {
+        if timestamp.is_empty() {
+            format!("{}\n", text)
+        } else if text.is_empty() {
             format!("{}\n", timestamp)
         } else {
             format!("{} {}\n", timestamp, text)

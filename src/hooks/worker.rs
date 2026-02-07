@@ -44,6 +44,10 @@ impl WorkerController {
         }
     }
 
+    pub fn set_timestamp_state(&self, enabled: bool) {
+        self.send(WorkerMsg::SetTimestampState(enabled));
+    }
+
     pub fn request_window(&self, start_line: usize, count: usize) {
         self.send(WorkerMsg::RequestWindow { start_line, count });
     }

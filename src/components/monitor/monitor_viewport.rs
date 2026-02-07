@@ -70,7 +70,6 @@ pub fn MonitorViewport(
             div { style: "position: absolute; top: 0; left: 0; right: 0; transform: translateY({offset_top}px); padding: {CONSOLE_TOP_PADDING}px 1rem {CONSOLE_BOTTOM_PADDING}px 1rem; pointer-events: auto; min-width: 100%; width: max-content;",
                 {
                     let highlights = (state.log.highlights)().clone();
-                    let show_timestamps = (state.ui.show_timestamps)();
                     let show_highlights = (state.ui.show_highlights)();
                     let active_line = (state.log.active_line)();
                     let logs = visible_logs.read();
@@ -85,7 +84,6 @@ pub fn MonitorViewport(
                                 key: "{line_idx}",
                                 text: text.clone(),
                                 highlights: highlights.clone(),
-                                show_timestamps,
                                 show_highlights,
                             }
                         }
@@ -95,7 +93,6 @@ pub fn MonitorViewport(
                                     key: "{0}",
                                     text: text.clone(),
                                     highlights: highlights.clone(),
-                                    show_timestamps,
                                     show_highlights: false, // Maybe don't highlight active line to avoid flicker? // Maybe don't highlight active line to avoid flicker?
                                 }
                             }

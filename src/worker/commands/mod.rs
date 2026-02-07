@@ -11,6 +11,7 @@ pub fn create_command_from_msg(msg: WorkerMsg) -> Box<dyn WorkerCommand> {
     match msg {
         WorkerMsg::NewSession => Box::new(NewSessionCommand),
         WorkerMsg::AppendChunk { chunk, is_hex } => Box::new(AppendChunkCommand { chunk, is_hex }),
+        WorkerMsg::SetTimestampState(enabled) => Box::new(SetTimestampStateCommand(enabled)),
 
         WorkerMsg::RequestWindow { start_line, count } => {
             Box::new(RequestWindowCommand { start_line, count })
@@ -28,9 +29,7 @@ pub fn create_command_from_msg(msg: WorkerMsg) -> Box<dyn WorkerCommand> {
             use_regex,
             invert,
         }),
-        WorkerMsg::ExportLogs { include_timestamp } => {
-            Box::new(ExportLogsCommand { include_timestamp })
-        }
+        WorkerMsg::ExportLogs { .. } => Box::new(ExportLogsCommand),
 
         _ => Box::new(NoOpCommand), // Fallback for handled/error messages
     }

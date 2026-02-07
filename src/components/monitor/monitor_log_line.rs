@@ -4,13 +4,8 @@ use crate::utils::decode_ansi_text;
 use dioxus::prelude::*;
 
 #[component]
-pub fn MonitorLogLine(
-    text: String,
-    highlights: Vec<Highlight>,
-    show_timestamps: bool,
-    show_highlights: bool,
-) -> Element {
-    let segments = decode_ansi_text(&text, &highlights, show_timestamps, show_highlights);
+pub fn MonitorLogLine(text: String, highlights: Vec<Highlight>, show_highlights: bool) -> Element {
+    let segments = decode_ansi_text(&text, &highlights, show_highlights);
 
     rsx! {
         div {

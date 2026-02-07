@@ -3,7 +3,7 @@ use crate::worker::error::LogError;
 use crate::worker::repository::index::ByteOffset;
 use wasm_bindgen::prelude::*;
 use wasm_streams::ReadableStream;
-use web_sys::{FileSystemReadWriteOptions, FileSystemSyncAccessHandle, TextDecoder, TextEncoder};
+use web_sys::{FileSystemReadWriteOptions, FileSystemSyncAccessHandle};
 
 /// Handles log export functionality
 pub struct LogExporter;
@@ -16,19 +16,13 @@ impl LogExporter {
     /// Creates a ReadableStream for exporting logs
     pub fn export_logs(
         handle: FileSystemSyncAccessHandle,
-        decoder: TextDecoder,
-        encoder: TextEncoder,
         file_size: ByteOffset,
-        include_timestamp: bool,
     ) -> Result<js_sys::Object, LogError> {
         let size = file_size;
         let backend = handle;
-        let dec = decoder;
-        let enc = encoder;
-        let ts = include_timestamp;
 
         let stream = futures_util::stream::unfold(ByteOffset(0), move |off| {
-            let (h, d, e) = (backend.clone(), dec.clone(), enc.clone());
+            let h = backend.clone();
             async move {
                 if off.0 >= size.0 {
                     return None;
@@ -41,17 +35,7 @@ impl LogExporter {
                     return None;
                 }
 
-                let res = if ts {
-                    JsValue::from(js_sys::Uint8Array::from(&buf[..]))
-                } else {
-                    let text = d.decode_with_u8_array(&buf).unwrap_or_default();
-                    let out = text
-                        .split('\n')
-                        .map(|l| if l.len() > 15 { &l[15..] } else { l })
-                        .collect::<Vec<_>>()
-                        .join("\n");
-                    JsValue::from(e.encode_with_input(&out))
-                };
+                let res = JsValue::from(js_sys::Uint8Array::from(&buf[..]));
                 Some((Ok(res), ByteOffset(off.0 + len as u64)))
             }
         });

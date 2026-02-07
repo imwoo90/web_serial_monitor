@@ -5,19 +5,9 @@ use regex::Regex;
 pub fn decode_ansi_text(
     text: &str,
     highlights: &[Highlight],
-    show_timestamps: bool,
     show_highlights: bool,
 ) -> Vec<(String, Option<String>)> {
-    // 1. Timestamp Parsing
-    let content = if !show_timestamps && text.starts_with('[') {
-        if let Some(end_pos) = text.find("] ") {
-            &text[end_pos + 2..]
-        } else {
-            text
-        }
-    } else {
-        text
-    };
+    let content = text;
 
     // 2. ANSI Code Parsing
     // We treat ANSI codes as the base segmentation, then apply user highlights on top.
@@ -187,13 +177,13 @@ mod tests {
         let highlights = vec![];
 
         // Green text
-        let res = decode_ansi_text("\x1B[32mHello\x1B[0m", &highlights, false, false);
+        let res = decode_ansi_text("\x1B[32mHello\x1B[0m", &highlights, false);
         assert_eq!(res.len(), 1);
         assert_eq!(res[0].0, "Hello");
         assert_eq!(res[0].1.as_deref(), Some("#10b981"));
 
         // Mixed
-        let res = decode_ansi_text("A\x1B[31mB\x1B[0mC", &highlights, false, false);
+        let res = decode_ansi_text("A\x1B[31mB\x1B[0mC", &highlights, false);
         assert_eq!(res.len(), 3);
         assert_eq!(res[0].0, "A");
         assert_eq!(res[0].1, None);
@@ -212,7 +202,7 @@ mod tests {
         }];
 
         // ANSI Green text containing "Error"
-        let res = decode_ansi_text("\x1B[32mNoErrorHere\x1B[0m", &highlights, false, true);
+        let res = decode_ansi_text("\x1B[32mNoErrorHere\x1B[0m", &highlights, true);
         assert_eq!(res.len(), 3);
         assert_eq!(res[0].0, "No");
         assert_eq!(res[0].1.as_deref(), Some("#10b981")); // Green

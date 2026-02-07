@@ -2,8 +2,13 @@ use crate::hooks::WorkerController;
 use crate::state::AppState;
 use dioxus::prelude::*;
 
-pub fn use_settings_sync(_bridge: WorkerController) {
-    // Other settings sync can go here
+pub fn use_settings_sync(bridge: WorkerController) {
+    let state = use_context::<AppState>();
+
+    use_effect(move || {
+        let show = (state.ui.show_timestamps)();
+        bridge.set_timestamp_state(show);
+    });
 }
 
 pub fn use_search_sync(bridge: WorkerController) {

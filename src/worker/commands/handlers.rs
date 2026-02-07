@@ -46,6 +46,19 @@ impl WorkerCommand for AppendChunkCommand {
     }
 }
 
+pub struct SetTimestampStateCommand(pub bool);
+
+impl WorkerCommand for SetTimestampStateCommand {
+    fn execute(
+        &self,
+        state: &mut WorkerState,
+        _state_rc: &Rc<RefCell<WorkerState>>,
+    ) -> Result<bool, JsValue> {
+        state.proc.set_timestamp_state(self.0);
+        Ok(true)
+    }
+}
+
 pub struct RequestWindowCommand {
     pub start_line: usize,
     pub count: usize,
@@ -142,9 +155,7 @@ impl WorkerCommand for SearchLogsCommand {
     }
 }
 
-pub struct ExportLogsCommand {
-    pub include_timestamp: bool,
-}
+pub struct ExportLogsCommand;
 
 impl WorkerCommand for ExportLogsCommand {
     fn execute(
@@ -163,14 +174,7 @@ impl WorkerCommand for ExportLogsCommand {
             .ok_or_else(|| LogError::Storage("OPFS handle missing for export".into()))
             .map_err(JsValue::from)?;
 
-        let stream = LogExporter::export_logs(
-            handle,
-            repo.storage.decoder.clone(),
-            repo.storage.encoder.clone(),
-            size,
-            self.include_timestamp,
-        )
-        .map_err(JsValue::from)?;
+        let stream = LogExporter::export_logs(handle, size).map_err(JsValue::from)?;
 
         let resp = js_sys::Object::new();
         let _ = js_sys::Reflect::set(&resp, &"type".into(), &"EXPORT_STREAM".into());
