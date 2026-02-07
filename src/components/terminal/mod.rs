@@ -87,26 +87,30 @@ pub fn Xterm() -> Element {
     });
 
     rsx! {
-        div { class: "relative w-full h-full flex flex-col",
-            // Toolbar
-            TerminalToolbar { term_instance }
+        main { class: "flex-1 min-h-0 mx-4 mb-0 mt-0 relative group/terminal",
+            div { class: "absolute inset-0 bg-console-bg rounded-t-2xl border-t border-x border-[#222629] shadow-[inset_0_0_20px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col",
+                div { class: "absolute inset-0 scanlines opacity-20 pointer-events-none z-10" }
 
-            // Terminal Container
-            div {
-                class: "flex-1 w-full bg-black overflow-hidden",
-                id: "xterm-container",
-                onmounted: move |_| {
-                    if let Some(element) = window()
-                        .unwrap()
-                        .document()
-                        .unwrap()
-                        .get_element_by_id("xterm-container")
-                    {
-                        if let Ok(html_elem) = element.dyn_into::<web_sys::HtmlElement>() {
-                            terminal_div.set(Some(html_elem));
+                // Toolbar
+                TerminalToolbar { term_instance }
+
+                // Terminal Container
+                div {
+                    class: "flex-1 w-full bg-transparent overflow-hidden pl-2", // Added padding-left to match monitor's look slightly, bg-transparent to show console-bg
+                    id: "xterm-container",
+                    onmounted: move |_| {
+                        if let Some(element) = window()
+                            .unwrap()
+                            .document()
+                            .unwrap()
+                            .get_element_by_id("xterm-container")
+                        {
+                            if let Ok(html_elem) = element.dyn_into::<web_sys::HtmlElement>() {
+                                terminal_div.set(Some(html_elem));
+                            }
                         }
-                    }
-                },
+                    },
+                }
             }
         }
     }

@@ -6,58 +6,74 @@ pub fn TerminalToolbar(term_instance: Signal<Option<super::AutoDisposeTerminal>>
     let mut state = use_context::<AppState>();
 
     rsx! {
-        div { class: "flex items-center justify-between p-2 bg-gray-800 border-b border-gray-700 text-sm",
+        div { class: "shrink-0 h-6 bg-[#16181a] border-b border-[#222629] flex items-center justify-between px-3",
+            div { class: "flex items-center gap-4",
+                div { class: "flex gap-1.5",
+                    div { class: "w-2 h-2 rounded-full bg-[#394f56]" }
+                    div { class: "w-2 h-2 rounded-full bg-[#394f56]" }
+                    div { class: "w-2 h-2 rounded-full bg-[#394f56]" }
+                }
+                span { class: "text-[10px] text-gray-500 font-mono", "[ TERMINAL ACTIVE ]" }
+            }
+
             div { class: "flex items-center gap-2",
-                // Clear button
+                // Font Size Controls
+                div { class: "flex items-center gap-1",
+                    button {
+                        class: "flex items-center justify-center w-5 h-5 rounded hover:bg-white/10 transition-colors text-gray-500 hover:text-white",
+                        onclick: move |_| {
+                            let current = *state.ui.font_size.read();
+                            if current > 8 {
+                                *state.ui.font_size.write() = current - 1;
+                            }
+                        },
+                        title: "Decrease Font Size",
+                        span { class: "text-[10px] font-bold", "-" }
+                    }
+                    span { class: "text-[10px] text-gray-500 font-mono w-6 text-center", "{state.ui.font_size}px" }
+                    button {
+                        class: "flex items-center justify-center w-5 h-5 rounded hover:bg-white/10 transition-colors text-gray-500 hover:text-white",
+                        onclick: move |_| {
+                            let current = *state.ui.font_size.read();
+                            if current < 36 {
+                                *state.ui.font_size.write() = current + 1;
+                            }
+                        },
+                        title: "Increase Font Size",
+                        span { class: "text-[10px] font-bold", "+" }
+                    }
+                }
+
+                div { class: "w-px h-3 bg-[#2a2e33]" }
+
+                // History Config
+                div { class: "flex items-center gap-2",
+                    span { class: "text-[10px] text-gray-500 font-mono", "HISTORY:" }
+                    input {
+                        class: "w-16 h-4 px-1 bg-[#0b0c0d] border border-[#222629] rounded text-[10px] text-gray-300 text-right focus:border-primary focus:outline-none transition-colors",
+                        r#type: "number",
+                        value: "{state.terminal.scrollback}",
+                        oninput: move |e| {
+                            if let Ok(val) = e.value().parse::<u32>() {
+                                *state.terminal.scrollback.write() = val;
+                            }
+                        },
+                    }
+                }
+
+                div { class: "w-px h-3 bg-[#2a2e33]" }
+
+                // Clear Button
                 button {
-                    class: "px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-white",
+                    class: "flex items-center justify-center w-5 h-5 rounded hover:bg-white/10 transition-colors text-gray-500 hover:text-red-500",
                     onclick: move |_| {
                         state.terminal.clear();
                         if let Some(term) = term_instance.read().as_ref() {
                             term.clear();
                         }
                     },
-                    "Clear"
-                }
-
-                div { class: "w-px h-4 bg-gray-600 mx-1" }
-
-                // Font size controls
-                button {
-                    class: "px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-white",
-                    onclick: move |_| {
-                        let current = *state.ui.font_size.read();
-                        if current > 8 {
-                            *state.ui.font_size.write() = current - 1;
-                        }
-                    },
-                    "-"
-                }
-                span { class: "text-gray-300", "{state.ui.font_size}px" }
-                button {
-                    class: "px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-white",
-                    onclick: move |_| {
-                        let current = *state.ui.font_size.read();
-                        if current < 36 {
-                            *state.ui.font_size.write() = current + 1;
-                        }
-                    },
-                    "+"
-                }
-            }
-
-            div { class: "flex items-center gap-2",
-                // History config
-                span { class: "text-gray-400 text-xs", "History:" }
-                input {
-                    class: "w-20 px-1 bg-gray-900 border border-gray-700 rounded text-white text-right",
-                    r#type: "number",
-                    value: "{state.terminal.scrollback}",
-                    oninput: move |e| {
-                        if let Ok(val) = e.value().parse::<u32>() {
-                            *state.terminal.scrollback.write() = val;
-                        }
-                    },
+                    title: "Clear Terminal",
+                    span { class: "material-symbols-outlined text-[14px]", "delete" }
                 }
             }
         }
