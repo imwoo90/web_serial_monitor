@@ -1,17 +1,16 @@
-# 📡 Web Serial Monitor (Built with Rust & Dioxus)
+# 📡 RusTerm (Built with Rust & Dioxus)
 
 ![Rust](https://img.shields.io/badge/rust-%23000000.svg?style=for-the-badge&logo=rust&logoColor=white)
 ![Dioxus](https://img.shields.io/badge/Dioxus-0.6-blue?style=for-the-badge)
 ![WASM](https://img.shields.io/badge/WebAssembly-purple?style=for-the-badge)
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue?style=for-the-badge)
-![Version](https://img.shields.io/badge/version-1.0.0-blue?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-3.0.0-blue?style=for-the-badge)
 
-A high-performance, browser-based Serial Monitor that requires **no installation**. Built with **Rust (Dioxus)** and **WebAssembly**, it provides a desktop-class experience directly in your browser.
+A high-performance, browser-based Serial Monitor & Terminal that requires **no installation**. Built with **Rust (Dioxus)** and **WebAssembly**, it provides a desktop-class experience directly in your browser.
 
-Unlike typical web serial tools, this project leverages **OPFS (Origin Private File System)** and **Web Workers** to handle **Gigabyte-scale logs** without freezing the UI, featuring real-time filtering and virtual scrolling.
+Unlike typical web serial tools, RusTerm leverages **OPFS (Origin Private File System)** and **Web Workers** to handle **Gigabyte-scale logs** without freezing the UI, featuring real-time filtering, virtual scrolling, and a full-featured terminal.
 
-[**🔴 LIVE DEMO**](https://imwoo90.github.io/web_serial_monitor/)
-
+[**🔴 RusTerm Live**](https://imwoo90.github.io/web_serial_monitor/)
 
 ---
 
@@ -20,35 +19,41 @@ Unlike typical web serial tools, this project leverages **OPFS (Origin Private F
 ### 🚀 Performance & Core
 *   **Web Serial API**: Connect to COM ports / TTY devices directly from Chrome/Edge. No drivers or software installation needed.
 *   **High-Performance Logging**: Handles **millions of log lines** seamlessly using **OPFS** (Persistent Storage) and asynchronous stream processing.
-*   **Zero-Lag UI**: Implements **Virtual Scrolling** to render only visible items, keeping memory usage low even with massive datasets. Includes **Robust Auto-Scroll** that tracks the bottom reliably even during mode switches (Text/Hex).
-*   **Non-Blocking Filter**: Background worker handles search/filtering efficiently using a **Progressive Scan & Yield** algorithm, ensuring the UI never freezes.
+*   **Zero-Lag UI**: Implements **Virtual Scrolling** to render only visible items, keeping memory usage low even with massive datasets.
+*   **Non-Blocking Filter**: Background worker handles search/filtering efficiently using a **Progressive Scan & Yield** algorithm.
+
+### 💻 Terminal & Interaction
+*   **Terminal Mode (xterm.js)**: A full-featured interactive terminal with ANSI/VT100 support.
+*   **Bidirectional Communication**: Send commands and receive responses in real-time.
+*   **Smart Auto-Scroll**: Tracks the bottom reliably even during high-speed data ingestion.
+*   **Configurable Layout**: Interactive font resizing and window fitting for the terminal instance.
 
 ### 🛠️ Advanced Tools
 *   **Real-time Filtering**: Filter logs by text, case-sensitivity, or **RegEx**. Supports **Invert Log** logic.
 *   **Smart Highlighting**: Assign custom colors to specific keywords (e.g., "Error" -> Red, "Warning" -> Yellow).
 *   **Hex View Mode**: Inspect raw binary data in Hexadecimal format.
-*   **Simulation Mode**: Built-in generic traffic generator for testing the monitor's performance (1000+ lines/sec load testing).
 *   **Log Export**: Download full session logs (GBs) as a file instantly without memory crashes using **Stream API**.
 
 ---
 
 ## 🏗️ Architecture
 
-This project uses a hybrid architecture to maximize performance in a browser environment.
+RusTerm uses a multi-threaded architecture to ensure a smooth UI even under heavy I/O load.
 
-*   **Main Thread (Rust/Dioxus)**: Handles UI rendering, State Management (Signals), and Serial Port I/O.
-*   **Web Worker (Rust)**: Manages heavy I/O tasks.
-    *   **OPFS**: Writes logs to a virtual file system for persistence.
-    *   **Search Engine**: Performs reverse/forward scanning for filtering.
-    *   **Throttling**: Batches UI updates (max 20fps) to prevent main thread blocking during high-load data ingestion.
+*   **Main Thread (Rust/Dioxus)**: Manages UI, state, and serial port communication.
+*   **Web Worker (Rust)**:
+    *   **OPFS**: Persistent storage for massive logs.
+    *   **VT100 Parser**: Robust processing of ANSI escape sequences.
+    *   **Search Engine**: Efficient log filtering and scanning.
+*   **Terminal (xterm.js)**: High-performance terminal rendering and keyboard input handling.
 
 ```mermaid
 graph TD
-    User["User / Serial Device"] -->|Data Stream| Main["Main Thread (Rust)"]
-    Main -->|Virtual DOM| Browser["Browser UI"]
+    User["User / Serial Device"] <-->|Data Stream| Main["Main Thread (RusTerm)"]
+    Main <-->|UI / Terminal| Browser["Browser Interface (xterm.js)"]
     Main -->|PostMessage| Worker["Log Worker (Rust)"]
     Worker -->|SyncAccessHandle| OPFS["OPFS Storage"]
-    Worker -->|Filtered View| Main
+    Worker -->|Processed Data| Main
 ```
 
 ---
@@ -66,35 +71,34 @@ graph TD
 git clone https://github.com/imwoo90/web_serial_monitor.git
 cd web_serial_monitor
 
-# 2. Run with Trunk / Dioxus CLI
+# 2. Run with Dioxus CLI
 dx serve --port 8080
 ```
-Open `http://localhost:8080` in a supported browser (Chrome, Edge, Opera).
+Open `http://localhost:8080` in a supported browser.
 
 ---
 
 ## 📖 Usage Guide
 
-1.  **Connect**: Click the **Connect** button and select your serial device. Set Baud Rate (default 115200).
-2.  **View Logs**: Logs will appear automatically. Scroll naturally or enable **Auto-Scroll**.
-3.  **Filter**:
-    *   Type in the input bar to filter logs instantly.
-    *   Use buttons for **Aa** (Case Sensitive), **.* (RegEx)**, or **! (Invert)**.
-4.  **Highlight**: Click the **Highlighter Icon** to open the panel. Add keywords (e.g., "Error") to highlight them permanently in the stream.
-5.  **Export**: Click the **Date Icon** (top-right) to download the current session log.
-6.  **Test**: Click the **Bug Icon** (Test Mode) next to Settings to simulate high-speed serial data.
+1.  **Connect**: Click **Connect** and select your device. Set the appropriate Baud Rate.
+2.  **Mode Switch**:
+    *   **Monitor**: Optimized for high-speed logging.
+        *   **Filter**: Use the search bar for instant log filtering.
+        *   **Highlight**: Open the highlighter panel to color-code specific log patterns.
+    *   **Terminal**: Use for interactive shells and command-line interfaces.
+3.  **Export**: Download logs using the export icon in the header.
 
 ---
 
 ## ⚠️ Browser Compatibility
-*   **Required**: Browsers supporting **Web Serial API** and **OPFS (Origin Private File System)**.
+*   **Required**: Browsers supporting **Web Serial API** and **OPFS**.
     *   ✅ Google Chrome (89+)
     *   ✅ Microsoft Edge (89+)
     *   ✅ Opera
-    *   ❌ Firefox (Web Serial not supported yet)
-    *   ❌ Safari (Web Serial not supported yet)
+    *   ❌ Firefox / Safari (Not supported yet)
 
 ---
 
 ## 📜 License
 This project is licensed under the **Apache License 2.0**.
+
