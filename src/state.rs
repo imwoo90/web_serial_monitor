@@ -11,6 +11,7 @@ pub struct UIState {
     pub show_timestamps: Signal<bool>,
     pub autoscroll: Signal<bool>,
     pub is_hex_view: Signal<bool>,
+    pub view_mode: Signal<ViewMode>,
 }
 
 #[derive(Clone, Copy)]
@@ -74,6 +75,9 @@ impl UIState {
     }
     pub fn toggle_hex_view(&self) {
         { self.is_hex_view }.toggle();
+    }
+    pub fn set_view_mode(&self, mode: ViewMode) {
+        { self.view_mode }.set(mode);
     }
 }
 
@@ -166,6 +170,7 @@ pub fn use_provide_app_state() -> AppState {
             show_timestamps: use_signal(|| false),
             autoscroll: use_signal(|| true),
             is_hex_view: use_signal(|| false),
+            view_mode: use_signal(|| ViewMode::Monitoring),
         },
         serial: SerialSettings {
             baud_rate: use_signal(|| 115200u32),

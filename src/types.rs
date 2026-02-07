@@ -18,6 +18,13 @@ pub enum LineEnding {
 }
 
 #[derive(Clone, Copy, PartialEq, Debug, Default, Serialize, Deserialize)]
+pub enum ViewMode {
+    #[default]
+    Monitoring,
+    Terminal,
+}
+
+#[derive(Clone, Copy, PartialEq, Debug, Default, Serialize, Deserialize)]
 pub enum Parity {
     #[default]
     None,
@@ -80,5 +87,7 @@ pub enum WorkerMsg {
         include_timestamp: bool,
     },
     ActiveLine(Option<String>),
+    SetMode(ViewMode),
+    RawData(Vec<u8>),
     Error(String),
 }
