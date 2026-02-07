@@ -44,7 +44,7 @@ jobs:
       - name: Build Dioxus App
         # Build with release profile and set base path to repository name
         run: |
-          dx build --release --base-path "/${{ steps.repo_name.outputs.REPO_NAME }}/"
+          dx bundle --release --out-dir dist --base-path "/${{ steps.repo_name.outputs.REPO_NAME }}/"
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
@@ -54,7 +54,7 @@ jobs:
         with:
           # Dioxus 0.7 output path is target/dx/[app_name]/release/web/public
           # This replaces the need to manually copy files to 'docs' or 'dist'
-          path: ./target/dx/RusTerm/release/web/public
+          path: ./dist/public
 
       - name: Deploy to GitHub Pages
         id: deployment
