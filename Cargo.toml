@@ -1,5 +1,5 @@
 [package]
-name = "serial_monitor"
+name = "rusterm"
 version = "0.1.0"
 authors = ["imwoo90 <wim90@kakao.com>"]
 edition = "2021"

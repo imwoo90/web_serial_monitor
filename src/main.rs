@@ -27,7 +27,7 @@ fn main() {
 #[component]
 fn App() -> Element {
     rsx! {
-        document::Title { "Serial Monitor with Custom Highlighting" }
+        document::Title { "RusTerm - High Performance Serial Monitor & Terminal" }
         document::Script { "document.documentElement.classList.add('dark')" }
         document::Link { rel: "icon", href: FAVICON }
         document::Link { rel: "preconnect", href: "https://fonts.googleapis.com" }
